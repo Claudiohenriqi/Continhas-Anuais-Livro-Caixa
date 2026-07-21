@@ -3,31 +3,57 @@ import MonthTabs from "./components/MonthTabs.jsx"
 import HeroSummary from "./components/HeroSummary.jsx"
 import Ledger from "./components/Ledger.jsx"
 import SummaryCard from "./components/SummaryCard.jsx"
-import { meses, mesAtual as mesInicial, contas as contasMock } from "./data/mockData.js"
-import { fetchContas } from "./data/sheetsApi.js"
+import { contas as contasMock } from "./data/mockData.js"
+import { listarMesesDisponiveis, fetchContasDaAba } from "./data/sheetsApi.js"
 
 let nextId = 1000
 
 export default function App() {
-  const [mesAtual, setMesAtual] = useState(mesInicial)
+  const [meses, setMeses] = useState([])
+  const [mesAtual, setMesAtual] = useState(null)
   const [contas, setContas] = useState([])
   const [carregando, setCarregando] = useState(true)
   const [avisoFonte, setAvisoFonte] = useState(null) // null | "planilha" | "exemplo"
 
+  // 1) Ao abrir o site, lista as abas (meses) disponíveis na planilha
   useEffect(() => {
     let ativo = true
-    setCarregando(true)
-    fetchContas()
-      .then((dados) => {
+    listarMesesDisponiveis()
+      .then((lista) => {
         if (!ativo) return
-        setContas(dados)
+        setMeses(lista)
+        setMesAtual(lista[lista.length - 1].chave)
         setAvisoFonte("planilha")
       })
       .catch((err) => {
         if (!ativo) return
-        console.warn("Não foi possível ler a planilha:", err.message)
+        console.warn("Não foi possível listar os meses da planilha:", err.message)
         setContas(contasMock)
         setAvisoFonte("exemplo")
+        setCarregando(false)
+      })
+    return () => {
+      ativo = false
+    }
+  }, [])
+
+  // 2) Sempre que o mês selecionado mudar, busca os dados daquela aba
+  useEffect(() => {
+    if (!mesAtual) return
+    const mes = meses.find((m) => m.chave === mesAtual)
+    if (!mes) return
+
+    let ativo = true
+    setCarregando(true)
+    fetchContasDaAba(mes.aba)
+      .then((dados) => {
+        if (!ativo) return
+        setContas(dados)
+      })
+      .catch((err) => {
+        if (!ativo) return
+        console.warn("Não foi possível ler a aba", mes.aba, err.message)
+        setContas([])
       })
       .finally(() => {
         if (ativo) setCarregando(false)
@@ -35,7 +61,7 @@ export default function App() {
     return () => {
       ativo = false
     }
-  }, [])
+  }, [mesAtual, meses])
 
   const editarCampo = (id, campo, valor) => {
     setContas((prev) => prev.map((c) => (c.id === id ? { ...c, [campo]: valor } : c)))
@@ -60,7 +86,18 @@ export default function App() {
   const adicionarConta = () => {
     setContas((prev) => [
       ...prev,
-      { id: nextId++, desc: "", categoria: "", valor: 0, status: "pendente", responsavel: "eu" },
+      {
+        id: nextId++,
+        desc: "",
+        categoria: "",
+        valor: 0,
+        cartao: "",
+        data: "",
+        parcela: "",
+        vencimento: "",
+        status: "pendente",
+        responsavel: "eu",
+      },
     ])
   }
 
@@ -78,6 +115,8 @@ export default function App() {
     )
   }, [contas])
 
+  const mesRotulo = meses.find((m) => m.chave === mesAtual)?.rotulo || ""
+
   return (
     <div className="max-w-[820px] mx-auto px-5 py-8 pb-20">
       <div className="flex items-baseline gap-2.5 mb-3">
@@ -89,8 +128,8 @@ export default function App() {
 
       {avisoFonte === "exemplo" && (
         <div className="text-[12px] text-burnt bg-burnt/10 border border-burnt/30 rounded-lg px-3 py-2 mb-5">
-          Não consegui ler a planilha (confira o .env e o compartilhamento). Mostrando dados de
-          exemplo por enquanto.
+          Não consegui ler a planilha (confira o .env, o compartilhamento, e se as abas se chamam
+          "Contas &lt;Mês&gt; &lt;Ano&gt;"). Mostrando dados de exemplo por enquanto.
         </div>
       )}
 
@@ -109,7 +148,7 @@ export default function App() {
             onRemove={removerConta}
             onAdd={adicionarConta}
           />
-          <SummaryCard total={pago + pendente} repassar={repassar} mes={mesAtual} />
+          <SummaryCard total={pago + pendente} repassar={repassar} mes={mesRotulo} />
         </>
       )}
     </div>

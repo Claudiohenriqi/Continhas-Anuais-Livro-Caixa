@@ -21,12 +21,13 @@ npm run dev
 
 1. **Conectar no Google Sheets** ✅ já implementado em `src/data/sheetsApi.js`
    - Confirme que o `.env` tem `VITE_SHEETS_API_KEY` e `VITE_SHEET_ID`.
-   - Por padrão a função busca a aba `"Contas Julho 2026"` — se sua aba tiver
-     outro nome, ajuste a constante `SHEET_NAME` no topo de
-     `src/data/sheetsApi.js`.
-   - Se a busca falhar (chave errada, planilha não pública, aba com nome
-     diferente), o site mostra um aviso e cai de volta pros dados de
-     exemplo em `src/data/mockData.js`, sem quebrar a tela.
+   - Cada mês precisa ficar numa aba própria, chamada exatamente
+     `"Contas <Mês por extenso> <Ano>"` (ex: `Contas Julho 2026`,
+     `Contas Agosto 2026`). O site lista as abas da planilha, descobre
+     quais seguem esse padrão, e mostra uma aba de mês pra cada uma.
+   - Se a busca falhar (chave errada, planilha não pública, nenhuma aba
+     no formato certo), o site mostra um aviso e cai de volta pros dados
+     de exemplo em `src/data/mockData.js`, sem quebrar a tela.
 
 2. **Publicar no GitHub Pages**
    ```bash
