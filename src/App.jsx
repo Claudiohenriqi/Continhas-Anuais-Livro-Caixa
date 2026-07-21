@@ -4,7 +4,8 @@ import HeroSummary from "./components/HeroSummary.jsx"
 import Ledger from "./components/Ledger.jsx"
 import SummaryCard from "./components/SummaryCard.jsx"
 import { contas as contasMock } from "./data/mockData.js"
-import { listarMesesDisponiveis, fetchContasDaAba, salvarNaAba } from "./data/sheetsApi.js"
+import { listarMesesDisponiveis, fetchContasDaAba, salvarNaAba, levarContasFixas } from "./data/sheetsApi.js"
+import { chaveParaMesAno, proximoMes, tituloAba, avancarData, avancarParcela } from "./utils/date.js"
 
 let nextId = 1000
 
@@ -17,6 +18,8 @@ export default function App() {
   const [sujo, setSujo] = useState(false) // tem alteração não salva?
   const [salvando, setSalvando] = useState(false)
   const [erroSalvar, setErroSalvar] = useState(null)
+  const [levandoFixas, setLevandoFixas] = useState(false)
+  const [msgFixas, setMsgFixas] = useState(null)
 
   // 1) Ao abrir o site, lista as abas (meses) disponíveis na planilha
   useEffect(() => {
@@ -106,6 +109,7 @@ export default function App() {
         status: "pendente",
         responsavel: "eu",
         grupo: "",
+        fixa: false,
       },
     ])
     setSujo(true)
@@ -125,6 +129,52 @@ export default function App() {
       })
       .finally(() => {
         setSalvando(false)
+      })
+  }
+
+  const levarFixasProximoMes = () => {
+    const fixas = contas.filter((c) => c.fixa)
+    if (fixas.length === 0) {
+      setMsgFixas("Nenhuma conta marcada como fixa (clique no 📌 nas contas que quer repetir).")
+      return
+    }
+
+    const linhas = fixas
+      .map((c) => {
+        const parcelaInfo = avancarParcela(c.parcela)
+        if (parcelaInfo.esgotada) return null
+        return {
+          cartao: c.cartao,
+          data: avancarData(c.data),
+          desc: c.desc,
+          categoria: c.categoria,
+          valor: c.valor,
+          parcela: parcelaInfo.texto,
+          vencimento: avancarData(c.vencimento),
+          responsavel: c.responsavel,
+          grupo: "",
+          fixa: c.fixa,
+        }
+      })
+      .filter(Boolean)
+
+    if (linhas.length === 0) {
+      setMsgFixas("As parcelas fixas já chegaram no fim — nenhuma pra levar adiante.")
+      return
+    }
+
+    const destino = tituloAba(proximoMes(chaveParaMesAno(mesAtual)))
+    setLevandoFixas(true)
+    setMsgFixas(null)
+    levarContasFixas(destino, linhas)
+      .then(() => {
+        setMsgFixas(`${linhas.length} conta(s) levada(s) pra "${destino}".`)
+      })
+      .catch((err) => {
+        setMsgFixas(`Erro: ${err.message}`)
+      })
+      .finally(() => {
+        setLevandoFixas(false)
       })
   }
 
@@ -189,6 +239,22 @@ export default function App() {
       ) : (
         <>
           <HeroSummary pago={pago} pendente={pendente} repassar={repassar} />
+
+          <div className="flex justify-between items-center mt-2 mb-1">
+            <span className="text-[11px] text-inkdim">
+              📌 marque contas como fixas pra repetir todo mês (aluguel, carro, parcelas em
+              andamento)
+            </span>
+            <button
+              onClick={levarFixasProximoMes}
+              disabled={levandoFixas}
+              className="text-[12px] text-inkdim hover:text-gold whitespace-nowrap ml-3"
+            >
+              {levandoFixas ? "Levando…" : "Levar fixas → próximo mês"}
+            </button>
+          </div>
+          {msgFixas && <p className="text-[12px] text-jade mb-2">{msgFixas}</p>}
+
           <Ledger
             contas={contas}
             onEdit={editarCampo}
