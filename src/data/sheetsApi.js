@@ -57,6 +57,10 @@ function normalizeResp(s) {
   return "eu"
 }
 
+function normalizeFixa(v) {
+  return paraTexto(v).toLowerCase() === "sim"
+}
+
 // Lista as abas da planilha que seguem o padrão "Contas <Mês> <Ano>",
 // já ordenadas da mais antiga pra mais recente.
 export async function listarMesesDisponiveis() {
@@ -101,7 +105,7 @@ export async function salvarNaAba(nomeAba, contas) {
   const res = await fetch(scriptUrl, {
     method: "POST",
     headers: { "Content-Type": "text/plain;charset=utf-8" },
-    body: JSON.stringify({ aba: nomeAba, linhas: contas }),
+    body: JSON.stringify({ acao: "salvar", aba: nomeAba, linhas: contas }),
   })
 
   if (!res.ok) {
@@ -115,9 +119,35 @@ export async function salvarNaAba(nomeAba, contas) {
   return data
 }
 
+// Envia as contas marcadas como "fixa" pra aba do mês seguinte, criando a
+// aba se ela ainda não existir. Não apaga o que já estiver lá — só
+// acrescenta linhas no final.
+export async function levarContasFixas(abaDestino, contas) {
+  const scriptUrl = import.meta.env.VITE_APPS_SCRIPT_URL
+  if (!scriptUrl) {
+    throw new Error("Falta VITE_APPS_SCRIPT_URL no arquivo .env")
+  }
+
+  const res = await fetch(scriptUrl, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify({ acao: "levarFixas", aba: abaDestino, linhas: contas }),
+  })
+
+  if (!res.ok) {
+    throw new Error(`Erro ${res.status} ao levar contas fixas`)
+  }
+
+  const data = await res.json()
+  if (data.erro) {
+    throw new Error(data.erro)
+  }
+  return data
+}
+
 export async function fetchContasDaAba(nomeAba) {
   const { apiKey, sheetId } = credenciais()
-  const range = `${nomeAba}!A2:K1000`
+  const range = `${nomeAba}!A2:L1000`
   const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(
     range
   )}?key=${apiKey}&valueRenderOption=UNFORMATTED_VALUE`
@@ -147,5 +177,6 @@ export async function fetchContasDaAba(nomeAba) {
       status: normalizeStatus(row[7]),
       responsavel: normalizeResp(row[8]),
       grupo: paraTexto(row[10]),
+      fixa: normalizeFixa(row[11]),
     }))
 }
