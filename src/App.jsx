@@ -105,6 +105,7 @@ export default function App() {
         vencimento: "",
         status: "pendente",
         responsavel: "eu",
+        grupo: "",
       },
     ])
     setSujo(true)
@@ -196,7 +197,7 @@ export default function App() {
             onRemove={removerConta}
             onAdd={adicionarConta}
           />
-          <SummaryCard total={pago + pendente} repassar={repassar} mes={mesRotulo} />
+          <SummaryCard contas={contas} repassar={repassar} mes={mesRotulo} />
         </>
       )}
     </div>
