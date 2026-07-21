@@ -46,6 +46,23 @@ function paraTexto(v) {
   return String(v)
 }
 
+// Específico pra coluna Parcela: se o Sheets converteu "12/12" pra uma
+// data sem querer (porque parece dia/mês válido), reconstrói "dia/mes"
+// em vez de devolver a data inteira com ano.
+function paraParcela(v) {
+  if (v === null || v === undefined || v === "") return ""
+  if (typeof v === "number") {
+    if (v > 20000 && v < 60000) {
+      const epoch = Date.UTC(1899, 11, 30)
+      const ms = epoch + v * 86400000
+      const d = new Date(ms)
+      return `${d.getUTCDate()}/${d.getUTCMonth() + 1}`
+    }
+    return String(v)
+  }
+  return String(v)
+}
+
 function normalizeStatus(s) {
   return paraTexto(s).toLowerCase() === "pago" ? "pago" : "pendente"
 }
@@ -172,7 +189,7 @@ export async function fetchContasDaAba(nomeAba) {
       desc: paraTexto(row[2]),
       categoria: paraTexto(row[3]),
       valor: parseValor(row[4]),
-      parcela: paraTexto(row[5]),
+      parcela: paraParcela(row[5]),
       vencimento: paraTexto(row[6]),
       status: normalizeStatus(row[7]),
       responsavel: normalizeResp(row[8]),
