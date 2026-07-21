@@ -1,0 +1,18 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.leader {
+  border-bottom: 1px dotted var(--tw-color, rgba(243, 238, 221, 0.12));
+}
+
+.tear {
+  height: 14px;
+  background: theme("colors.surface");
+  -webkit-mask: radial-gradient(circle at 8px 0, transparent 7px, black 7.5px) repeat-x;
+  mask: radial-gradient(circle at 8px 0, transparent 7px, black 7.5px) repeat-x;
+  -webkit-mask-size: 16px 14px;
+  mask-size: 16px 14px;
+  -webkit-mask-position: 0 -7px;
+  mask-position: 0 -7px;
+}
