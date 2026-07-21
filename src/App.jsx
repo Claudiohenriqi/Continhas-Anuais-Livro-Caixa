@@ -133,13 +133,17 @@ export default function App() {
   }
 
   const levarFixasProximoMes = () => {
-    const fixas = contas.filter((c) => c.fixa)
-    if (fixas.length === 0) {
-      setMsgFixas("Nenhuma conta marcada como fixa (clique no 📌 nas contas que quer repetir).")
+    const ehParcelaAtiva = (p) => /^\d+\s*\/\s*\d+$/.test((p || "").trim())
+    const candidatos = contas.filter((c) => c.fixa || ehParcelaAtiva(c.parcela))
+
+    if (candidatos.length === 0) {
+      setMsgFixas(
+        "Nenhuma conta fixa ou parcelada encontrada (clique no 📌 pra marcar contas sem parcela, tipo aluguel)."
+      )
       return
     }
 
-    const linhas = fixas
+    const linhas = candidatos
       .map((c) => {
         const parcelaInfo = avancarParcela(c.parcela)
         if (parcelaInfo.esgotada) return null
@@ -242,8 +246,8 @@ export default function App() {
 
           <div className="flex justify-between items-center mt-2 mb-1">
             <span className="text-[11px] text-inkdim">
-              📌 marque contas como fixas pra repetir todo mês (aluguel, carro, parcelas em
-              andamento)
+              📌 marque contas sem parcela pra repetir todo mês (aluguel, carro) — contas
+              parceladas (ex: 3/12) já são levadas automaticamente
             </span>
             <button
               onClick={levarFixasProximoMes}
