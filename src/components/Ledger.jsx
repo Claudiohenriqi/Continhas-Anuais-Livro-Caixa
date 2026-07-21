@@ -11,7 +11,7 @@ const fmt = (v) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL
 function CampoInput({ className, ...props }) {
   return (
     <input
-      className={`bg-transparent border-0 border-b border-transparent hover:border-hair focus:border-gold focus:outline-none focus:outline-none py-1 min-w-0 ${className}`}
+      className={`bg-transparent border-0 border-b border-transparent hover:border-hair focus:border-gold focus:outline-none py-1 min-w-0 ${className}`}
       {...props}
     />
   )
@@ -48,11 +48,31 @@ function StatusBtn({ status, onClick, width = "w-[74px]" }) {
   )
 }
 
+function PinBtn({ ativo, onClick, title = "Marcar como fixa (repete todo mês)" }) {
+  return (
+    <button
+      onClick={onClick}
+      title={title}
+      className={`text-[14px] leading-none justify-self-center ${
+        ativo ? "text-gold" : "text-inkdim/40 hover:text-inkdim"
+      }`}
+    >
+      📌
+    </button>
+  )
+}
+
+function bate(valor, query) {
+  return (valor || "").toString().toLowerCase().includes(query)
+}
+
 export default function Ledger({ contas, onEdit, onToggleStatus, onChangeResp, onRemove, onAdd }) {
   const [selecionando, setSelecionando] = useState(false)
   const [selecionados, setSelecionados] = useState(new Set())
   const [nomeGrupo, setNomeGrupo] = useState("")
   const [expandidos, setExpandidos] = useState(new Set())
+  const [buscando, setBuscando] = useState(false)
+  const [busca, setBusca] = useState("")
 
   const toggleSelecionado = (id) => {
     setSelecionados((prev) => {
@@ -88,6 +108,11 @@ export default function Ledger({ contas, onEdit, onToggleStatus, onChangeResp, o
     membros.forEach((c) => onEdit(c.id, "grupo", ""))
   }
 
+  const toggleBusca = () => {
+    setBuscando((v) => !v)
+    if (buscando) setBusca("")
+  }
+
   // Monta a lista de linhas: grupos consolidados + itens soltos, na ordem de aparição
   const jaRenderizado = new Set()
   const linhas = []
@@ -102,35 +127,57 @@ export default function Ledger({ contas, onEdit, onToggleStatus, onChangeResp, o
     }
   })
 
+  const query = busca.trim().toLowerCase()
+  const linhasFiltradas =
+    query === ""
+      ? linhas
+      : linhas.filter((l) => {
+          if (l.tipo === "item") {
+            const c = l.conta
+            return [c.desc, c.data, c.cartao, c.categoria].some((v) => bate(v, query))
+          }
+          const nomeBate = bate(l.nome, query)
+          const membroBate = l.membros.some((m) =>
+            [m.desc, m.data, m.cartao, m.categoria].some((v) => bate(v, query))
+          )
+          return nomeBate || membroBate
+        })
+
   return (
-    <div className="bg-surface rounded-b-2xl px-7 pt-2 pb-5">
-      <div className="flex justify-end mb-2">
-        {selecionando ? (
-          <button
-            onClick={cancelarSelecao}
-            className="text-[12px] text-inkdim hover:text-ink"
-          >
+    <div className="bg-surface rounded-b-2xl px-7 pt-3 pb-5 relative">
+      {buscando && (
+        <div className="mb-3">
+          <CampoInput
+            autoFocus
+            className="w-full text-[14px] text-ink border-hair px-1"
+            placeholder="Buscar por descrição, data ou cartão…"
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+          />
+        </div>
+      )}
+
+      {selecionando && (
+        <div className="flex justify-end mb-2">
+          <button onClick={cancelarSelecao} className="text-[12px] text-inkdim hover:text-ink">
             Cancelar seleção
           </button>
-        ) : (
-          <button
-            onClick={() => setSelecionando(true)}
-            className="text-[12px] text-inkdim hover:text-gold"
-          >
-            Selecionar pra agrupar
-          </button>
-        )}
-      </div>
+        </div>
+      )}
 
-      {linhas.map((linha) =>
+      {query !== "" && linhasFiltradas.length === 0 && (
+        <p className="text-[13px] text-inkdim py-4">Nada encontrado pra "{busca}".</p>
+      )}
+
+      {linhasFiltradas.map((linha) =>
         linha.tipo === "item" ? (
           <div key={linha.conta.id} className="py-2.5 border-b border-hair last:border-none">
             <div
               className="grid items-center gap-x-2.5"
               style={{
                 gridTemplateColumns: selecionando
-                  ? "18px 1fr 88px 96px auto auto 22px"
-                  : "1fr 88px 96px auto auto 22px",
+                  ? "18px 1fr 88px 96px auto auto 20px 22px"
+                  : "1fr 88px 96px auto auto 20px 22px",
               }}
             >
               {selecionando && (
@@ -166,6 +213,10 @@ export default function Ledger({ contas, onEdit, onToggleStatus, onChangeResp, o
               <Seg
                 valor={linha.conta.responsavel}
                 onChange={(r) => onChangeResp(linha.conta.id, r)}
+              />
+              <PinBtn
+                ativo={!!linha.conta.fixa}
+                onClick={() => onEdit(linha.conta.id, "fixa", !linha.conta.fixa)}
               />
               <button
                 onClick={() => onRemove(linha.conta.id)}
@@ -205,6 +256,9 @@ export default function Ledger({ contas, onEdit, onToggleStatus, onChangeResp, o
                   onChange={(e) => onEdit(linha.conta.id, "parcela", e.target.value)}
                 />
               </div>
+              {linha.conta.fixa && (
+                <span className="text-[10px] text-gold">📌 fixa</span>
+              )}
             </div>
           </div>
         ) : (
@@ -212,16 +266,15 @@ export default function Ledger({ contas, onEdit, onToggleStatus, onChangeResp, o
             key={`g-${linha.nome}`}
             nome={linha.nome}
             membros={linha.membros}
-            expandido={expandidos.has(linha.nome)}
-            onToggleExpandir={() => toggleExpandido(linha.nome)}
-            onRenomear={(novoNome) =>
-              linha.membros.forEach((m) => onEdit(m.id, "grupo", novoNome))
+            expandido={
+              expandidos.has(linha.nome) ||
+              (query !== "" && !bate(linha.nome, query))
             }
+            onToggleExpandir={() => toggleExpandido(linha.nome)}
             onDesagrupar={() => desagrupar(linha.membros)}
             onEdit={onEdit}
             onToggleStatus={onToggleStatus}
             onChangeResp={onChangeResp}
-            onRemove={onRemove}
           />
         )
       )}
@@ -234,7 +287,7 @@ export default function Ledger({ contas, onEdit, onToggleStatus, onChangeResp, o
       </button>
 
       {selecionando && selecionados.size > 0 && (
-        <div className="sticky bottom-3 mt-3 flex items-center gap-2 bg-surface2 border border-gold/40 rounded-lg px-3 py-2.5">
+        <div className="sticky bottom-20 mt-3 flex items-center gap-2 bg-surface2 border border-gold/40 rounded-lg px-3 py-2.5">
           <span className="text-[12px] text-inkdim whitespace-nowrap">
             {selecionados.size} selecionada{selecionados.size > 1 ? "s" : ""}
           </span>
@@ -253,6 +306,28 @@ export default function Ledger({ contas, onEdit, onToggleStatus, onChangeResp, o
           </button>
         </div>
       )}
+
+      {/* Botões flutuantes */}
+      <div className="fixed bottom-6 right-6 flex flex-col gap-2.5 z-40">
+        <button
+          onClick={toggleBusca}
+          title="Buscar"
+          className={`w-11 h-11 rounded-full shadow-lg flex items-center justify-center text-[16px] ${
+            buscando ? "bg-gold text-[#2A2110]" : "bg-surface2 text-ink border border-hair"
+          }`}
+        >
+          🔍
+        </button>
+        <button
+          onClick={() => (selecionando ? cancelarSelecao() : setSelecionando(true))}
+          title="Selecionar pra agrupar"
+          className={`w-11 h-11 rounded-full shadow-lg flex items-center justify-center text-[16px] ${
+            selecionando ? "bg-gold text-[#2A2110]" : "bg-surface2 text-ink border border-hair"
+          }`}
+        >
+          ⛓
+        </button>
+      </div>
     </div>
   )
 }
@@ -262,12 +337,10 @@ function GrupoRow({
   membros,
   expandido,
   onToggleExpandir,
-  onRenomear,
   onDesagrupar,
   onEdit,
   onToggleStatus,
   onChangeResp,
-  onRemove,
 }) {
   const total = membros.reduce((s, m) => s + (Number(m.valor) || 0), 0)
   const todosPagos = membros.every((m) => m.status === "pago")
@@ -291,10 +364,7 @@ function GrupoRow({
         className="grid items-center gap-x-2.5"
         style={{ gridTemplateColumns: "1fr 88px 96px auto auto 22px" }}
       >
-        <button
-          onClick={onToggleExpandir}
-          className="flex items-center gap-2 text-left min-w-0"
-        >
+        <button onClick={onToggleExpandir} className="flex items-center gap-2 text-left min-w-0">
           <span className="text-inkdim text-[11px]">{expandido ? "▾" : "▸"}</span>
           <span className="text-[14px] text-ink font-medium truncate">{nome}</span>
           <span className="text-[11px] text-inkdim">({membros.length})</span>
@@ -305,7 +375,7 @@ function GrupoRow({
         <Seg valor={respUnico} onChange={bulkResp} />
         <button
           onClick={onDesagrupar}
-          title="Desagrupar"
+          title="Desagrupar (desfaz o grupo inteiro)"
           className="text-inkdim hover:text-brick justify-self-center text-[16px] leading-none"
         >
           &times;
@@ -315,7 +385,11 @@ function GrupoRow({
       {expandido && (
         <div className="mt-2 pl-5 border-l border-hair space-y-2">
           {membros.map((m) => (
-            <div key={m.id} className="grid items-center gap-x-2.5" style={{ gridTemplateColumns: "1fr 88px 88px auto 22px" }}>
+            <div
+              key={m.id}
+              className="grid items-center gap-x-2.5"
+              style={{ gridTemplateColumns: "1fr 88px 88px auto 22px" }}
+            >
               <CampoInput
                 className="text-[13px] text-ink"
                 value={m.desc}
@@ -338,7 +412,7 @@ function GrupoRow({
               <StatusBtn status={m.status} onClick={() => onToggleStatus(m.id)} width="w-[68px]" />
               <button
                 onClick={() => onEdit(m.id, "grupo", "")}
-                title="Tirar do grupo"
+                title="Tirar do grupo (esse item só)"
                 className="text-inkdim hover:text-brick justify-self-center text-[14px] leading-none"
               >
                 &times;
