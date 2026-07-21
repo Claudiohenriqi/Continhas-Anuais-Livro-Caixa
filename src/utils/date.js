@@ -17,6 +17,13 @@ function semAcento(s) {
   return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
 }
 
+// "16/07/2026" -> objeto Date do JavaScript (ou null se não reconhecer)
+export function paraDate(dataStr) {
+  const m = String(dataStr || "").trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
+  if (!m) return null
+  return new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]))
+}
+
 // "07/2026" -> chave usada pra ordenar os meses
 export function mesChave({ mes, ano }) {
   return `${ano}-${String(mes).padStart(2, "0")}`
