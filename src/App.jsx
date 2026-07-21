@@ -4,7 +4,7 @@ import HeroSummary from "./components/HeroSummary.jsx"
 import Ledger from "./components/Ledger.jsx"
 import SummaryCard from "./components/SummaryCard.jsx"
 import { contas as contasMock } from "./data/mockData.js"
-import { listarMesesDisponiveis, fetchContasDaAba } from "./data/sheetsApi.js"
+import { listarMesesDisponiveis, fetchContasDaAba, salvarNaAba } from "./data/sheetsApi.js"
 
 let nextId = 1000
 
@@ -14,6 +14,9 @@ export default function App() {
   const [contas, setContas] = useState([])
   const [carregando, setCarregando] = useState(true)
   const [avisoFonte, setAvisoFonte] = useState(null) // null | "planilha" | "exemplo"
+  const [sujo, setSujo] = useState(false) // tem alteração não salva?
+  const [salvando, setSalvando] = useState(false)
+  const [erroSalvar, setErroSalvar] = useState(null)
 
   // 1) Ao abrir o site, lista as abas (meses) disponíveis na planilha
   useEffect(() => {
@@ -49,6 +52,7 @@ export default function App() {
       .then((dados) => {
         if (!ativo) return
         setContas(dados)
+        setSujo(false)
       })
       .catch((err) => {
         if (!ativo) return
@@ -65,6 +69,7 @@ export default function App() {
 
   const editarCampo = (id, campo, valor) => {
     setContas((prev) => prev.map((c) => (c.id === id ? { ...c, [campo]: valor } : c)))
+    setSujo(true)
   }
 
   const alternarStatus = (id) => {
@@ -73,14 +78,17 @@ export default function App() {
         c.id === id ? { ...c, status: c.status === "pago" ? "pendente" : "pago" } : c
       )
     )
+    setSujo(true)
   }
 
   const alterarResponsavel = (id, resp) => {
     setContas((prev) => prev.map((c) => (c.id === id ? { ...c, responsavel: resp } : c)))
+    setSujo(true)
   }
 
   const removerConta = (id) => {
     setContas((prev) => prev.filter((c) => c.id !== id))
+    setSujo(true)
   }
 
   const adicionarConta = () => {
@@ -99,6 +107,24 @@ export default function App() {
         responsavel: "eu",
       },
     ])
+    setSujo(true)
+  }
+
+  const salvarAlteracoes = () => {
+    const mes = meses.find((m) => m.chave === mesAtual)
+    if (!mes) return
+    setSalvando(true)
+    setErroSalvar(null)
+    salvarNaAba(mes.aba, contas)
+      .then(() => {
+        setSujo(false)
+      })
+      .catch((err) => {
+        setErroSalvar(err.message)
+      })
+      .finally(() => {
+        setSalvando(false)
+      })
   }
 
   const { pago, pendente, repassar } = useMemo(() => {
@@ -119,12 +145,34 @@ export default function App() {
 
   return (
     <div className="max-w-[820px] mx-auto px-5 py-8 pb-20">
-      <div className="flex items-baseline gap-2.5 mb-3">
-        <span className="font-display font-semibold text-[22px] tracking-tight">Livro-Caixa</span>
-        <span className="text-[12px] text-inkdim uppercase tracking-widest">
-          organizador do casal
-        </span>
+      <div className="flex items-baseline justify-between gap-2.5 mb-3 flex-wrap">
+        <div className="flex items-baseline gap-2.5">
+          <span className="font-display font-semibold text-[22px] tracking-tight">
+            Livro-Caixa
+          </span>
+          <span className="text-[12px] text-inkdim uppercase tracking-widest">
+            organizador do casal
+          </span>
+        </div>
+
+        <button
+          onClick={salvarAlteracoes}
+          disabled={!sujo || salvando}
+          className={`text-[13px] font-medium px-4 py-2 rounded-lg border ${
+            sujo
+              ? "bg-gold text-[#2A2110] border-gold"
+              : "text-inkdim border-hair cursor-default"
+          }`}
+        >
+          {salvando ? "Salvando…" : sujo ? "Salvar alterações" : "Tudo salvo"}
+        </button>
       </div>
+
+      {erroSalvar && (
+        <div className="text-[12px] text-brick bg-brick/10 border border-brick/30 rounded-lg px-3 py-2 mb-5">
+          Não consegui salvar: {erroSalvar}
+        </div>
+      )}
 
       {avisoFonte === "exemplo" && (
         <div className="text-[12px] text-burnt bg-burnt/10 border border-burnt/30 rounded-lg px-3 py-2 mb-5">

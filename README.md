@@ -29,7 +29,16 @@ npm run dev
      no formato certo), o site mostra um aviso e cai de volta pros dados
      de exemplo em `src/data/mockData.js`, sem quebrar a tela.
 
-2. **Publicar no GitHub Pages**
+2. **Salvar alterações na planilha** ✅ implementado via Google Apps Script
+   - No editor de Apps Script da sua planilha (Extensões → Apps Script),
+     tem um script que recebe as atualizações do site e reescreve a aba
+     do mês selecionado.
+   - Implantado como "App da Web", acesso "Qualquer pessoa" — a URL
+     gerada fica em `VITE_APPS_SCRIPT_URL` no `.env`.
+   - O botão "Salvar alterações" no topo do site fica ativo sempre que
+     você edita, adiciona ou remove uma conta.
+
+3. **Publicar no GitHub Pages**
    ```bash
    npm install
    npm run build
@@ -39,6 +48,6 @@ npm run dev
    `/NOME-DO-REPOSITORIO/`, e habilite o GitHub Pages nas configurações do
    repositório (branch `gh-pages`).
 
-3. **Upload de fatura em PDF** — por enquanto, suba o PDF aqui no chat que eu
+4. **Upload de fatura em PDF** — por enquanto, suba o PDF aqui no chat que eu
    organizo os lançamentos pra você colar na planilha. Automatizar isso
    direto no site é um passo futuro (v2).

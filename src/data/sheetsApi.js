@@ -90,7 +90,31 @@ export async function listarMesesDisponiveis() {
   return meses
 }
 
-// Busca os lançamentos de uma aba específica (ex: "Contas Julho 2026").
+// Envia a lista de contas atualizada de volta pra planilha, através do
+// Google Apps Script publicado (veja o README pra configurar).
+export async function salvarNaAba(nomeAba, contas) {
+  const scriptUrl = import.meta.env.VITE_APPS_SCRIPT_URL
+  if (!scriptUrl) {
+    throw new Error("Falta VITE_APPS_SCRIPT_URL no arquivo .env")
+  }
+
+  const res = await fetch(scriptUrl, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify({ aba: nomeAba, linhas: contas }),
+  })
+
+  if (!res.ok) {
+    throw new Error(`Erro ${res.status} ao salvar na planilha`)
+  }
+
+  const data = await res.json()
+  if (data.erro) {
+    throw new Error(data.erro)
+  }
+  return data
+}
+
 export async function fetchContasDaAba(nomeAba) {
   const { apiKey, sheetId } = credenciais()
   const range = `${nomeAba}!A2:J1000`
