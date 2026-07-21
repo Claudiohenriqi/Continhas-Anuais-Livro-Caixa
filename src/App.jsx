@@ -134,6 +134,16 @@ export default function App() {
       })
   }
 
+  // Salva sozinho 2s depois da última edição, sem precisar clicar no botão
+  useEffect(() => {
+    if (!sujo || salvando || carregando) return
+    const t = setTimeout(() => {
+      salvarAlteracoes()
+    }, 2000)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contas, sujo])
+
   const levarFixasProximoMes = () => {
     const ehParcelaAtiva = (p) => /^\d+\s*\/\s*\d+$/.test((p || "").trim())
     const candidatos = contas.filter((c) => c.fixa || ehParcelaAtiva(c.parcela))
@@ -215,13 +225,14 @@ export default function App() {
         <button
           onClick={salvarAlteracoes}
           disabled={!sujo || salvando}
+          title={sujo ? "Salva sozinho em instantes — clique pra forçar agora" : ""}
           className={`text-[13px] font-medium px-4 py-2 rounded-lg border ${
             sujo
               ? "bg-gold text-[#2A2110] border-gold"
               : "text-inkdim border-hair cursor-default"
           }`}
         >
-          {salvando ? "Salvando…" : sujo ? "Salvar alterações" : "Tudo salvo"}
+          {salvando ? "Salvando…" : sujo ? "Salvando em instantes…" : "Tudo salvo"}
         </button>
       </div>
 
