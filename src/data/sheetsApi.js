@@ -117,7 +117,7 @@ export async function salvarNaAba(nomeAba, contas) {
 
 export async function fetchContasDaAba(nomeAba) {
   const { apiKey, sheetId } = credenciais()
-  const range = `${nomeAba}!A2:J1000`
+  const range = `${nomeAba}!A2:K1000`
   const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(
     range
   )}?key=${apiKey}&valueRenderOption=UNFORMATTED_VALUE`
@@ -146,5 +146,6 @@ export async function fetchContasDaAba(nomeAba) {
       vencimento: paraTexto(row[6]),
       status: normalizeStatus(row[7]),
       responsavel: normalizeResp(row[8]),
+      grupo: paraTexto(row[10]),
     }))
 }
