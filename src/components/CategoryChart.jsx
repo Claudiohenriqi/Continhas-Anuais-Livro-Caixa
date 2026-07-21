@@ -18,7 +18,8 @@ function CampoInput({ className, ...props }) {
 }
 
 export default function CategoryChart({ contas, onEdit }) {
-  const [expandida, setExpandida] = useState(null)
+  const [expandida, setExpandida] = useState(null) // nome da categoria aberta
+  const [idsAbertos, setIdsAbertos] = useState([]) // ids fixos, tirados no momento do clique
 
   const porCategoria = {}
   contas.forEach((c) => {
@@ -34,6 +35,20 @@ export default function CategoryChart({ contas, onEdit }) {
   if (entradas.length === 0) return null
   const max = entradas[0][2] || 1
 
+  const abrir = (cat, itens) => {
+    if (expandida === cat) {
+      setExpandida(null)
+      setIdsAbertos([])
+    } else {
+      setExpandida(cat)
+      setIdsAbertos(itens.map((i) => i.id)) // trava a lista aqui — não recalcula ao digitar
+    }
+  }
+
+  // busca os itens travados pelos ids, mas com os valores atuais (pra edição refletir)
+  const contasPorId = Object.fromEntries(contas.map((c) => [c.id, c]))
+  const itensAbertos = idsAbertos.map((id) => contasPorId[id]).filter(Boolean)
+
   return (
     <div className="mt-7 bg-surface border border-hair rounded-2xl px-6 py-6">
       <datalist id="categorias-sugeridas-chart">
@@ -48,10 +63,7 @@ export default function CategoryChart({ contas, onEdit }) {
           const aberta = expandida === cat
           return (
             <div key={cat}>
-              <button
-                onClick={() => setExpandida(aberta ? null : cat)}
-                className="w-full text-left"
-              >
+              <button onClick={() => abrir(cat, itens)} className="w-full text-left">
                 <div className="flex justify-between text-[12px] mb-1 items-center gap-2">
                   <span className="text-ink flex items-center gap-1.5">
                     <span className="text-inkdim text-[10px]">{aberta ? "▾" : "▸"}</span>
@@ -70,7 +82,7 @@ export default function CategoryChart({ contas, onEdit }) {
 
               {aberta && (
                 <div className="mb-3 pl-3 border-l border-hair space-y-2">
-                  {itens.map((item) => (
+                  {itensAbertos.map((item) => (
                     <div
                       key={item.id}
                       className="grid items-center gap-x-2.5"
