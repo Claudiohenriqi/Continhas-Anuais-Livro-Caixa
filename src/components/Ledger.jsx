@@ -66,6 +66,12 @@ function bate(valor, query) {
   return (valor || "").toString().toLowerCase().includes(query)
 }
 
+const CATEGORIAS_SUGERIDAS = [
+  "Fixo", "Cartão", "Mercado", "Alimentação", "Assinatura", "Farmácia/Saúde",
+  "Combustível", "Compras", "Encargos/Juros", "Transferência/Pix", "Educação",
+  "Viagem", "Investimentos", "Parcelamento", "Outros",
+]
+
 export default function Ledger({ contas, onEdit, onToggleStatus, onChangeResp, onRemove, onAdd }) {
   const [selecionando, setSelecionando] = useState(false)
   const [selecionados, setSelecionados] = useState(new Set())
@@ -145,6 +151,12 @@ export default function Ledger({ contas, onEdit, onToggleStatus, onChangeResp, o
 
   return (
     <div className="bg-surface rounded-b-2xl px-7 pt-3 pb-5 relative">
+      <datalist id="categorias-sugeridas">
+        {CATEGORIAS_SUGERIDAS.map((c) => (
+          <option key={c} value={c} />
+        ))}
+      </datalist>
+
       {buscando && (
         <div className="mb-3">
           <CampoInput
@@ -197,6 +209,7 @@ export default function Ledger({ contas, onEdit, onToggleStatus, onChangeResp, o
                 className="text-[11px] text-inkdim"
                 value={linha.conta.categoria}
                 placeholder="Categoria"
+                list="categorias-sugeridas"
                 onChange={(e) => onEdit(linha.conta.id, "categoria", e.target.value)}
               />
               <CampoInput
@@ -400,6 +413,7 @@ function GrupoRow({
                 className="text-[11px] text-inkdim"
                 value={m.categoria}
                 placeholder="Categoria"
+                list="categorias-sugeridas"
                 onChange={(e) => onEdit(m.id, "categoria", e.target.value)}
               />
               <CampoInput
