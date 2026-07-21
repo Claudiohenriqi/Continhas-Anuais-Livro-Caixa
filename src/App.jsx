@@ -3,6 +3,9 @@ import MonthTabs from "./components/MonthTabs.jsx"
 import HeroSummary from "./components/HeroSummary.jsx"
 import Ledger from "./components/Ledger.jsx"
 import SummaryCard from "./components/SummaryCard.jsx"
+import ProximosVencimentos from "./components/ProximosVencimentos.jsx"
+import CategoryChart from "./components/CategoryChart.jsx"
+import AnnualView from "./components/AnnualView.jsx"
 import { contas as contasMock } from "./data/mockData.js"
 import { listarMesesDisponiveis, fetchContasDaAba, salvarNaAba, levarContasFixas } from "./data/sheetsApi.js"
 import { chaveParaMesAno, proximoMes, tituloAba, avancarData, avancarParcela } from "./utils/date.js"
@@ -244,6 +247,8 @@ export default function App() {
         <>
           <HeroSummary pago={pago} pendente={pendente} repassar={repassar} />
 
+          <ProximosVencimentos contas={contas} />
+
           <div className="flex justify-between items-center mt-2 mb-1">
             <span className="text-[11px] text-inkdim">
               📌 marque contas sem parcela pra repetir todo mês (aluguel, carro) — contas
@@ -268,6 +273,8 @@ export default function App() {
             onAdd={adicionarConta}
           />
           <SummaryCard contas={contas} repassar={repassar} mes={mesRotulo} />
+          <CategoryChart contas={contas} />
+          <AnnualView />
         </>
       )}
     </div>
