@@ -125,10 +125,6 @@ export default function Ledger({ contas, onEdit, onToggleStatus, onChangeResp, o
     if (buscando) setBusca("")
   }
 
-  // Monta a lista de linhas, na ordem de aparição:
-  // 1) grupos manuais (campo "grupo" preenchido pelo usuário)
-  // 2) grupos automáticos por cartão (2+ contas do mesmo cartão, sem grupo manual)
-  // 3) itens soltos
   const contagemCartao = {}
   contas.forEach((c) => {
     if (c.grupo) return
@@ -179,7 +175,7 @@ export default function Ledger({ contas, onEdit, onToggleStatus, onChangeResp, o
         })
 
   return (
-    <div className="bg-surface rounded-2xl px-4 sm:px-7 pt-3 pb-5 relative">
+    <div className="relative">
       <datalist id="categorias-sugeridas">
         {CATEGORIAS_SUGERIDAS.map((c) => (
           <option key={c} value={c} />
@@ -187,10 +183,10 @@ export default function Ledger({ contas, onEdit, onToggleStatus, onChangeResp, o
       </datalist>
 
       {buscando && (
-        <div className="mb-3">
+        <div className="mb-3 bg-surface rounded-2xl px-4 py-1">
           <CampoInput
             autoFocus
-            className="w-full text-[14px] text-ink border-hair px-1"
+            className="w-full text-[14px] text-ink px-1"
             placeholder="Buscar por descrição, data ou cartão…"
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
@@ -210,135 +206,133 @@ export default function Ledger({ contas, onEdit, onToggleStatus, onChangeResp, o
         <p className="text-[13px] text-inkdim py-4">Nada encontrado pra "{busca}".</p>
       )}
 
-      {linhasFiltradas.map((linha) =>
-        linha.tipo === "item" ? (
-          <div key={linha.conta.id} className="py-3 border-b border-hair last:border-none">
-            {/* Linha 1: descrição + valor */}
-            <div className="flex items-center gap-2">
-              {selecionando && (
-                <input
-                  type="checkbox"
-                  className="flex-shrink-0"
-                  checked={selecionados.has(linha.conta.id)}
-                  onChange={() => toggleSelecionado(linha.conta.id)}
-                />
-              )}
-              <Avatar nome={linha.conta.cartao || linha.conta.categoria} />
-              <CampoInput
-                className="flex-1 text-[14px] text-ink min-w-0"
-                value={linha.conta.desc}
-                placeholder="Descrição"
-                onChange={(e) => onEdit(linha.conta.id, "desc", e.target.value)}
-              />
-              <CampoInput
-                className="font-mono text-[14px] text-ink text-right w-[86px] flex-shrink-0"
-                type="number"
-                step="0.01"
-                value={linha.conta.valor}
-                onChange={(e) => onEdit(linha.conta.id, "valor", Number(e.target.value))}
-              />
-            </div>
-
-            {/* Linha 2: categoria, status, pin, remover */}
-            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-              <CampoInput
-                className="text-[11px] text-inkdim w-[100px] flex-shrink-0"
-                value={linha.conta.categoria}
-                placeholder="Categoria"
-                list="categorias-sugeridas"
-                onChange={(e) => onEdit(linha.conta.id, "categoria", e.target.value)}
-              />
-              <StatusBtn
-                status={linha.conta.status}
-                onClick={() => onToggleStatus(linha.conta.id)}
-              />
-              <PinBtn
-                ativo={!!linha.conta.fixa}
-                onClick={() => onEdit(linha.conta.id, "fixa", !linha.conta.fixa)}
-              />
-              <button
-                onClick={() => onRemove(linha.conta.id)}
-                aria-label="Remover conta"
-                title="Remover"
-                className="text-inkdim hover:text-brick text-[16px] leading-none ml-auto"
-              >
-                &times;
-              </button>
-            </div>
-
-            {/* Linha 3: responsável */}
-            <div className="mt-1.5">
-              <Seg
-                valor={linha.conta.responsavel}
-                onChange={(r) => onChangeResp(linha.conta.id, r)}
-                className="w-full max-w-[280px]"
-              />
-            </div>
-
-            {/* Linha 4: de / data / parcela */}
-            <div className="flex items-center gap-3 mt-1.5 flex-wrap">
-              <div className="flex items-center gap-1.5">
-                <span className="text-[10px] text-inkdim">De</span>
+      <div className="space-y-2.5">
+        {linhasFiltradas.map((linha) =>
+          linha.tipo === "item" ? (
+            <div key={linha.conta.id} className="bg-surface rounded-2xl px-4 py-3.5">
+              <div className="flex items-center gap-2.5">
+                {selecionando && (
+                  <input
+                    type="checkbox"
+                    className="flex-shrink-0"
+                    checked={selecionados.has(linha.conta.id)}
+                    onChange={() => toggleSelecionado(linha.conta.id)}
+                  />
+                )}
+                <Avatar nome={linha.conta.cartao || linha.conta.categoria} />
                 <CampoInput
-                  className="text-[11px] text-inkdim w-[88px]"
-                  value={linha.conta.cartao || ""}
-                  placeholder="Cartão"
-                  onChange={(e) => onEdit(linha.conta.id, "cartao", e.target.value)}
+                  className="flex-1 text-[14px] text-ink font-medium min-w-0"
+                  value={linha.conta.desc}
+                  placeholder="Descrição"
+                  onChange={(e) => onEdit(linha.conta.id, "desc", e.target.value)}
+                />
+                <CampoInput
+                  className="font-mono text-[14px] text-ink font-semibold text-right w-[86px] flex-shrink-0"
+                  type="number"
+                  step="0.01"
+                  value={linha.conta.valor}
+                  onChange={(e) => onEdit(linha.conta.id, "valor", Number(e.target.value))}
                 />
               </div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-[10px] text-inkdim">Data</span>
+
+              <div className="flex items-center gap-2 mt-2.5 flex-wrap pl-[38px]">
                 <CampoInput
-                  className="font-mono text-[11px] text-inkdim w-[74px]"
-                  value={linha.conta.data || ""}
-                  placeholder="dd/mm/aaaa"
-                  onChange={(e) => onEdit(linha.conta.id, "data", e.target.value)}
+                  className="text-[11px] text-inkdim w-[100px] flex-shrink-0"
+                  value={linha.conta.categoria}
+                  placeholder="Categoria"
+                  list="categorias-sugeridas"
+                  onChange={(e) => onEdit(linha.conta.id, "categoria", e.target.value)}
+                />
+                <StatusBtn
+                  status={linha.conta.status}
+                  onClick={() => onToggleStatus(linha.conta.id)}
+                />
+                <PinBtn
+                  ativo={!!linha.conta.fixa}
+                  onClick={() => onEdit(linha.conta.id, "fixa", !linha.conta.fixa)}
+                />
+                <button
+                  onClick={() => onRemove(linha.conta.id)}
+                  aria-label="Remover conta"
+                  title="Remover"
+                  className="text-inkdim hover:text-brick text-[16px] leading-none ml-auto"
+                >
+                  &times;
+                </button>
+              </div>
+
+              <div className="mt-2 pl-[38px]">
+                <Seg
+                  valor={linha.conta.responsavel}
+                  onChange={(r) => onChangeResp(linha.conta.id, r)}
+                  className="w-full max-w-[280px]"
                 />
               </div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-[10px] text-inkdim">Parcela</span>
-                <CampoInput
-                  className="font-mono text-[11px] text-inkdim w-[44px]"
-                  value={linha.conta.parcela || ""}
-                  placeholder="-"
-                  onChange={(e) => onEdit(linha.conta.id, "parcela", e.target.value)}
-                />
+
+              <div className="flex items-center gap-3 mt-2 flex-wrap pl-[38px]">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] text-inkdim">De</span>
+                  <CampoInput
+                    className="text-[11px] text-inkdim w-[88px]"
+                    value={linha.conta.cartao || ""}
+                    placeholder="Cartão"
+                    onChange={(e) => onEdit(linha.conta.id, "cartao", e.target.value)}
+                  />
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] text-inkdim">Data</span>
+                  <CampoInput
+                    className="font-mono text-[11px] text-inkdim w-[74px]"
+                    value={linha.conta.data || ""}
+                    placeholder="dd/mm/aaaa"
+                    onChange={(e) => onEdit(linha.conta.id, "data", e.target.value)}
+                  />
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] text-inkdim">Parcela</span>
+                  <CampoInput
+                    className="font-mono text-[11px] text-inkdim w-[44px]"
+                    value={linha.conta.parcela || ""}
+                    placeholder="-"
+                    onChange={(e) => onEdit(linha.conta.id, "parcela", e.target.value)}
+                  />
+                </div>
+                {linha.conta.fixa && <span className="text-[10px] text-gold">📌 fixa</span>}
               </div>
-              {linha.conta.fixa && <span className="text-[10px] text-gold">📌 fixa</span>}
             </div>
-          </div>
-        ) : (
-          <GrupoRow
-            key={`${linha.origem}-${linha.nome}`}
-            nome={linha.nome}
-            membros={linha.membros}
-            origem={linha.origem}
-            expandido={
-              expandidos.has(linha.nome) ||
-              (query !== "" && !bate(linha.nome, query))
-            }
-            onToggleExpandir={() => toggleExpandido(linha.nome)}
-            onDesagrupar={() =>
-              linha.origem === "manual"
-                ? desagruparManual(linha.membros)
-                : desfazerAutoGrupo(linha.nome)
-            }
-            onEdit={onEdit}
-            onToggleStatus={onToggleStatus}
-            onChangeResp={onChangeResp}
-          />
-        )
-      )}
+          ) : (
+            <GrupoRow
+              key={`${linha.origem}-${linha.nome}`}
+              nome={linha.nome}
+              membros={linha.membros}
+              origem={linha.origem}
+              expandido={
+                expandidos.has(linha.nome) ||
+                (query !== "" && !bate(linha.nome, query))
+              }
+              onToggleExpandir={() => toggleExpandido(linha.nome)}
+              onDesagrupar={() =>
+                linha.origem === "manual"
+                  ? desagruparManual(linha.membros)
+                  : desfazerAutoGrupo(linha.nome)
+              }
+              onEdit={onEdit}
+              onToggleStatus={onToggleStatus}
+              onChangeResp={onChangeResp}
+            />
+          )
+        )}
+      </div>
 
       <button
         onClick={onAdd}
-        className="w-full mt-2 py-2.5 rounded-lg border border-dashed border-hair text-inkdim text-[13px] hover:text-gold hover:border-gold"
+        className="w-full mt-2.5 py-3 rounded-2xl border border-dashed border-hair text-inkdim text-[13px] hover:text-gold hover:border-gold"
       >
         + Adicionar conta
       </button>
 
       {selecionando && selecionados.size > 0 && (
-        <div className="sticky bottom-20 mt-3 flex items-center gap-2 bg-surface2 border border-gold/40 rounded-lg px-3 py-2.5 flex-wrap">
+        <div className="sticky bottom-20 mt-3 flex items-center gap-2 bg-surface2 border border-gold/40 rounded-2xl px-3 py-2.5 flex-wrap">
           <span className="text-[12px] text-inkdim whitespace-nowrap">
             {selecionados.size} selecionada{selecionados.size > 1 ? "s" : ""}
           </span>
@@ -358,7 +352,6 @@ export default function Ledger({ contas, onEdit, onToggleStatus, onChangeResp, o
         </div>
       )}
 
-      {/* Botões flutuantes */}
       <div className="fixed bottom-6 right-6 flex flex-col gap-2.5 z-40">
         <button
           onClick={toggleBusca}
@@ -411,23 +404,29 @@ function GrupoRow({
   }
 
   return (
-    <div className="py-3 border-b border-hair last:border-none">
+    <div className="bg-surface rounded-2xl px-4 py-3.5 overflow-hidden">
       <div className="flex items-center gap-2 flex-wrap">
         <button
           onClick={onToggleExpandir}
-          className="flex items-center gap-2 text-left min-w-0 flex-1"
+          className="flex items-center gap-2.5 text-left min-w-0 flex-1"
         >
-          <span className="text-inkdim text-[11px] flex-shrink-0">{expandido ? "▾" : "▸"}</span>
-          <Avatar nome={nome} size={24} />
-          <span className="text-[14px] text-ink font-medium truncate">{nome}</span>
+          <Avatar nome={nome} size={30} />
+          <span className="text-[14px] text-ink font-semibold truncate">{nome}</span>
           <span className="text-[11px] text-inkdim flex-shrink-0">({membros.length})</span>
           {origem === "auto" && (
             <span className="text-[9px] text-inkdim/60 border border-hair rounded px-1 flex-shrink-0">
               cartão
             </span>
           )}
+          <span
+            className={`text-inkdim text-[12px] flex-shrink-0 transition-transform duration-300 ${
+              expandido ? "rotate-90" : ""
+            }`}
+          >
+            ›
+          </span>
         </button>
-        <span className="font-mono text-[14px] text-ink">{fmt(total)}</span>
+        <span className="font-mono text-[14px] text-ink font-semibold">{fmt(total)}</span>
         <button
           onClick={onDesagrupar}
           title={
@@ -441,7 +440,7 @@ function GrupoRow({
         </button>
       </div>
 
-      <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+      <div className="flex items-center gap-2 mt-2.5 flex-wrap pl-[38px]">
         <StatusBtn status={todosPagos ? "pago" : "pendente"} onClick={bulkStatus} />
         {dividindoTudo ? (
           <Seg valor={null} onChange={bulkResp} className="flex-1 max-w-[280px]" />
@@ -455,55 +454,60 @@ function GrupoRow({
         )}
       </div>
 
-      {expandido && (
-        <div className="mt-2 pl-3 border-l border-hair space-y-2.5">
-          {membros.map((m) => (
-            <div key={m.id}>
-              <div className="flex items-center gap-2">
-                <CampoInput
-                  className="flex-1 text-[13px] text-ink min-w-0"
-                  value={m.desc}
-                  placeholder="Descrição"
-                  onChange={(e) => onEdit(m.id, "desc", e.target.value)}
-                />
-                <CampoInput
-                  className="font-mono text-[13px] text-ink text-right w-[76px] flex-shrink-0"
-                  type="number"
-                  step="0.01"
-                  value={m.valor}
-                  onChange={(e) => onEdit(m.id, "valor", Number(e.target.value))}
-                />
+      <div
+        className="grid transition-[grid-template-rows] duration-300 ease-out"
+        style={{ gridTemplateRows: expandido ? "1fr" : "0fr" }}
+      >
+        <div className="overflow-hidden">
+          <div className="mt-3 pt-3 pl-[38px] border-t border-hair space-y-3">
+            {membros.map((m) => (
+              <div key={m.id}>
+                <div className="flex items-center gap-2">
+                  <CampoInput
+                    className="flex-1 text-[13px] text-ink min-w-0"
+                    value={m.desc}
+                    placeholder="Descrição"
+                    onChange={(e) => onEdit(m.id, "desc", e.target.value)}
+                  />
+                  <CampoInput
+                    className="font-mono text-[13px] text-ink text-right w-[76px] flex-shrink-0"
+                    type="number"
+                    step="0.01"
+                    value={m.valor}
+                    onChange={(e) => onEdit(m.id, "valor", Number(e.target.value))}
+                  />
+                </div>
+                <div className="flex items-center gap-2 mt-1 flex-wrap">
+                  <CampoInput
+                    className="text-[11px] text-inkdim w-[100px] flex-shrink-0"
+                    value={m.categoria}
+                    placeholder="Categoria"
+                    list="categorias-sugeridas"
+                    onChange={(e) => onEdit(m.id, "categoria", e.target.value)}
+                  />
+                  <StatusBtn status={m.status} onClick={() => onToggleStatus(m.id)} />
+                  {origem === "manual" && (
+                    <button
+                      onClick={() => onEdit(m.id, "grupo", "")}
+                      title="Tirar do grupo (esse item só)"
+                      className="text-inkdim hover:text-brick text-[14px] leading-none ml-auto"
+                    >
+                      &times;
+                    </button>
+                  )}
+                </div>
+                <div className="mt-1">
+                  <Seg
+                    valor={m.responsavel}
+                    onChange={(r) => onChangeResp(m.id, r)}
+                    className="w-full max-w-[260px]"
+                  />
+                </div>
               </div>
-              <div className="flex items-center gap-2 mt-1 flex-wrap">
-                <CampoInput
-                  className="text-[11px] text-inkdim w-[100px] flex-shrink-0"
-                  value={m.categoria}
-                  placeholder="Categoria"
-                  list="categorias-sugeridas"
-                  onChange={(e) => onEdit(m.id, "categoria", e.target.value)}
-                />
-                <StatusBtn status={m.status} onClick={() => onToggleStatus(m.id)} />
-                {origem === "manual" && (
-                  <button
-                    onClick={() => onEdit(m.id, "grupo", "")}
-                    title="Tirar do grupo (esse item só)"
-                    className="text-inkdim hover:text-brick text-[14px] leading-none ml-auto"
-                  >
-                    &times;
-                  </button>
-                )}
-              </div>
-              <div className="mt-1">
-                <Seg
-                  valor={m.responsavel}
-                  onChange={(r) => onChangeResp(m.id, r)}
-                  className="w-full max-w-[260px]"
-                />
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      )}
+      </div>
     </div>
   )
 }
