@@ -257,15 +257,15 @@ export default function App() {
         <>
           <HeroSummary pago={pago} pendente={pendente} repassar={repassar} />
 
-          <div className="flex justify-between items-center mt-2 mb-1">
-            <span className="text-[11px] text-inkdim">
+          <div className="flex justify-between items-center mt-2 mb-1 gap-2 flex-wrap">
+            <span className="text-[11px] text-inkdim flex-1 min-w-[200px]">
               📌 marque contas sem parcela pra repetir todo mês (aluguel, carro) — contas
               parceladas (ex: 3/12) já são levadas automaticamente
             </span>
             <button
               onClick={levarFixasProximoMes}
               disabled={levandoFixas}
-              className="text-[12px] text-inkdim hover:text-gold whitespace-nowrap ml-3"
+              className="text-[12px] text-inkdim hover:text-gold whitespace-nowrap"
             >
               {levandoFixas ? "Levando…" : "Levar fixas → próximo mês"}
             </button>
