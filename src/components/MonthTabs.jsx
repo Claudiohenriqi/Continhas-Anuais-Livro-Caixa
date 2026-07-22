@@ -2,15 +2,15 @@ export default function MonthTabs({ meses, mesAtual, onChange }) {
   if (meses.length === 0) return null
 
   return (
-    <div className="flex gap-1 overflow-x-auto pb-1 mb-6 border-b border-hair">
+    <div className="flex gap-2 overflow-x-auto pb-1 mb-4">
       {meses.map((m) => (
         <button
           key={m.chave}
           onClick={() => onChange(m.chave)}
-          className={`flex-none px-4 py-2 text-[13px] font-mono whitespace-nowrap border-b-2 ${
+          className={`flex-none px-4 py-2 rounded-full text-[13px] font-semibold whitespace-nowrap transition-colors ${
             m.chave === mesAtual
-              ? "text-gold border-gold"
-              : "text-inkdim border-transparent hover:text-ink"
+              ? "bg-gold text-[#0A0A0A]"
+              : "bg-surface text-inkdim hover:text-ink"
           }`}
         >
           {m.rotulo}
