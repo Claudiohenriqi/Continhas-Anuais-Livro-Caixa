@@ -11,8 +11,8 @@ async function gerarImagemResumo(contas, mes, repassar) {
 
   if (document.fonts && document.fonts.ready) {
     try {
-      await document.fonts.load("600 28px Fraunces")
-      await document.fonts.load("500 16px 'IBM Plex Mono'")
+      await document.fonts.load("800 28px Inter")
+      await document.fonts.load("600 16px Inter")
       await document.fonts.load("400 14px Inter")
       await document.fonts.ready
     } catch (e) {
@@ -38,14 +38,14 @@ async function gerarImagemResumo(contas, mes, repassar) {
   ctx.scale(scale, scale)
 
   // fundo
-  ctx.fillStyle = "#152420"
+  ctx.fillStyle = "#0A0A0A"
   ctx.fillRect(0, 0, width, height)
 
   // cabeçalho
-  ctx.fillStyle = "#D9A441"
-  ctx.font = "600 26px Fraunces, Georgia, serif"
+  ctx.fillStyle = "#D7FF4E"
+  ctx.font = "800 26px Inter, sans-serif"
   ctx.fillText("Livro-Caixa", padX, 52)
-  ctx.fillStyle = "#9CA9A0"
+  ctx.fillStyle = "#8F8F8F"
   ctx.font = "12px Inter, Arial, sans-serif"
   ctx.fillText(`CONTAS DE ${mes.toUpperCase()}`, padX, 74)
 
@@ -62,16 +62,16 @@ async function gerarImagemResumo(contas, mes, repassar) {
 
   const desenharGrupo = (titulo, lista) => {
     if (lista.length === 0) return
-    ctx.fillStyle = "#9CA9A0"
+    ctx.fillStyle = "#8F8F8F"
     ctx.font = "11px Inter, Arial, sans-serif"
     ctx.fillText(titulo.toUpperCase(), padX, y)
     y += groupLabelH
     lista.forEach((l) => {
-      ctx.fillStyle = "#F3EEDD"
+      ctx.fillStyle = "#FFFFFF"
       ctx.font = "15px Inter, Arial, sans-serif"
       ctx.fillText(l.desc, padX, y)
-      ctx.fillStyle = "#F3EEDD"
-      ctx.font = "15px 'IBM Plex Mono', monospace"
+      ctx.fillStyle = "#FFFFFF"
+      ctx.font = "600 15px Inter, sans-serif"
       ctx.textAlign = "right"
       ctx.fillText(fmt(l.valor), width - padX, y)
       ctx.textAlign = "left"
@@ -96,13 +96,13 @@ async function gerarImagemResumo(contas, mes, repassar) {
   ctx.setLineDash([])
 
   y += 42
-  ctx.fillStyle = "#9CA9A0"
+  ctx.fillStyle = "#8F8F8F"
   ctx.font = "13px Inter, Arial, sans-serif"
   ctx.fillText("VALOR A REPASSAR", padX, y)
 
   y += 40
-  ctx.fillStyle = "#4FA37D"
-  ctx.font = "600 34px 'IBM Plex Mono', monospace"
+  ctx.fillStyle = "#22C55E"
+  ctx.font = "800 34px Inter, sans-serif"
   ctx.fillText(fmt(repassar), padX, y)
 
   return new Promise((resolve) => canvas.toBlob(resolve, "image/png"))
@@ -215,7 +215,7 @@ export default function SummaryCard({ contas, repassar, mes }) {
       <div className="flex gap-2.5 mt-4 flex-wrap">
         <button
           onClick={copiar}
-          className="text-[13px] font-medium px-4 py-2.5 rounded-lg bg-gold text-[#2A2110]"
+          className="text-[13px] font-medium px-4 py-2.5 rounded-lg bg-gold text-[#0A0A0A]"
         >
           Copiar resumo
         </button>
