@@ -17,14 +17,14 @@ function CampoInput({ className, ...props }) {
   )
 }
 
-function Seg({ valor, onChange }) {
+function Seg({ valor, onChange, className = "" }) {
   return (
-    <div className="flex gap-0.5 bg-surface2 rounded-md p-0.5 justify-self-end w-[150px]">
+    <div className={`flex gap-0.5 bg-surface2 rounded-md p-0.5 ${className}`}>
       {RESP_OPTIONS.map((opt) => (
         <button
           key={opt.key}
           onClick={() => onChange(opt.key)}
-          className={`flex-1 text-[10px] font-mono px-1 py-1 rounded text-center ${
+          className={`flex-1 text-[10px] font-mono px-1.5 py-1 rounded text-center whitespace-nowrap ${
             valor === opt.key ? "bg-gold text-[#2A2110]" : "text-inkdim"
           }`}
         >
@@ -35,11 +35,11 @@ function Seg({ valor, onChange }) {
   )
 }
 
-function StatusBtn({ status, onClick, width = "w-[74px]" }) {
+function StatusBtn({ status, onClick }) {
   return (
     <button
       onClick={onClick}
-      className={`text-[10px] font-mono py-0.5 rounded uppercase tracking-wide text-center ${width} ${
+      className={`text-[10px] font-mono px-2.5 py-1 rounded uppercase tracking-wide text-center whitespace-nowrap ${
         status === "pago" ? "bg-jade/15 text-jade" : "bg-burnt/15 text-burnt"
       }`}
     >
@@ -53,7 +53,7 @@ function PinBtn({ ativo, onClick, title = "Marcar como fixa (repete todo mês)" 
     <button
       onClick={onClick}
       title={title}
-      className={`text-[14px] leading-none justify-self-center ${
+      className={`text-[15px] leading-none px-1 ${
         ativo ? "text-gold" : "text-inkdim/40 hover:text-inkdim"
       }`}
     >
@@ -77,6 +77,7 @@ export default function Ledger({ contas, onEdit, onToggleStatus, onChangeResp, o
   const [selecionados, setSelecionados] = useState(new Set())
   const [nomeGrupo, setNomeGrupo] = useState("")
   const [expandidos, setExpandidos] = useState(new Set())
+  const [autoGruposDesfeitos, setAutoGruposDesfeitos] = useState(new Set())
   const [buscando, setBuscando] = useState(false)
   const [busca, setBusca] = useState("")
 
@@ -110,8 +111,12 @@ export default function Ledger({ contas, onEdit, onToggleStatus, onChangeResp, o
     })
   }
 
-  const desagrupar = (membros) => {
+  const desagruparManual = (membros) => {
     membros.forEach((c) => onEdit(c.id, "grupo", ""))
+  }
+
+  const desfazerAutoGrupo = (cartao) => {
+    setAutoGruposDesfeitos((prev) => new Set(prev).add(cartao))
   }
 
   const toggleBusca = () => {
@@ -119,18 +124,41 @@ export default function Ledger({ contas, onEdit, onToggleStatus, onChangeResp, o
     if (buscando) setBusca("")
   }
 
-  // Monta a lista de linhas: grupos consolidados + itens soltos, na ordem de aparição
+  // Monta a lista de linhas, na ordem de aparição:
+  // 1) grupos manuais (campo "grupo" preenchido pelo usuário)
+  // 2) grupos automáticos por cartão (2+ contas do mesmo cartão, sem grupo manual)
+  // 3) itens soltos
+  const contagemCartao = {}
+  contas.forEach((c) => {
+    if (c.grupo) return
+    const chave = (c.cartao || "").trim()
+    if (!chave) return
+    contagemCartao[chave] = (contagemCartao[chave] || 0) + 1
+  })
+
   const jaRenderizado = new Set()
   const linhas = []
   contas.forEach((c) => {
     if (c.grupo) {
-      if (jaRenderizado.has(c.grupo)) return
-      jaRenderizado.add(c.grupo)
+      const chaveM = `m:${c.grupo}`
+      if (jaRenderizado.has(chaveM)) return
+      jaRenderizado.add(chaveM)
       const membros = contas.filter((x) => x.grupo === c.grupo)
-      linhas.push({ tipo: "grupo", nome: c.grupo, membros })
-    } else {
-      linhas.push({ tipo: "item", conta: c })
+      linhas.push({ tipo: "grupo", nome: c.grupo, membros, origem: "manual" })
+      return
     }
+    const chaveCartao = (c.cartao || "").trim()
+    const elegivelAuto =
+      chaveCartao && contagemCartao[chaveCartao] > 1 && !autoGruposDesfeitos.has(chaveCartao)
+    if (elegivelAuto) {
+      const chaveA = `a:${chaveCartao}`
+      if (jaRenderizado.has(chaveA)) return
+      jaRenderizado.add(chaveA)
+      const membros = contas.filter((x) => !x.grupo && (x.cartao || "").trim() === chaveCartao)
+      linhas.push({ tipo: "grupo", nome: chaveCartao, membros, origem: "auto" })
+      return
+    }
+    linhas.push({ tipo: "item", conta: c })
   })
 
   const query = busca.trim().toLowerCase()
@@ -150,7 +178,7 @@ export default function Ledger({ contas, onEdit, onToggleStatus, onChangeResp, o
         })
 
   return (
-    <div className="bg-surface rounded-b-2xl px-7 pt-3 pb-5 relative">
+    <div className="bg-surface rounded-b-2xl px-4 sm:px-7 pt-3 pb-5 relative">
       <datalist id="categorias-sugeridas">
         {CATEGORIAS_SUGERIDAS.map((c) => (
           <option key={c} value={c} />
@@ -183,49 +211,44 @@ export default function Ledger({ contas, onEdit, onToggleStatus, onChangeResp, o
 
       {linhasFiltradas.map((linha) =>
         linha.tipo === "item" ? (
-          <div key={linha.conta.id} className="py-2.5 border-b border-hair last:border-none">
-            <div
-              className="grid items-center gap-x-2.5"
-              style={{
-                gridTemplateColumns: selecionando
-                  ? "18px 1fr 88px 96px auto auto 20px 22px"
-                  : "1fr 88px 96px auto auto 20px 22px",
-              }}
-            >
+          <div key={linha.conta.id} className="py-3 border-b border-hair last:border-none">
+            {/* Linha 1: descrição + valor */}
+            <div className="flex items-center gap-2">
               {selecionando && (
                 <input
                   type="checkbox"
+                  className="flex-shrink-0"
                   checked={selecionados.has(linha.conta.id)}
                   onChange={() => toggleSelecionado(linha.conta.id)}
                 />
               )}
               <CampoInput
-                className="text-[14px] text-ink"
+                className="flex-1 text-[14px] text-ink min-w-0"
                 value={linha.conta.desc}
                 placeholder="Descrição"
                 onChange={(e) => onEdit(linha.conta.id, "desc", e.target.value)}
               />
               <CampoInput
-                className="text-[11px] text-inkdim"
-                value={linha.conta.categoria}
-                placeholder="Categoria"
-                list="categorias-sugeridas"
-                onChange={(e) => onEdit(linha.conta.id, "categoria", e.target.value)}
-              />
-              <CampoInput
-                className="font-mono text-[14px] text-ink text-right"
+                className="font-mono text-[14px] text-ink text-right w-[86px] flex-shrink-0"
                 type="number"
                 step="0.01"
                 value={linha.conta.valor}
                 onChange={(e) => onEdit(linha.conta.id, "valor", Number(e.target.value))}
               />
+            </div>
+
+            {/* Linha 2: categoria, status, pin, remover */}
+            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+              <CampoInput
+                className="text-[11px] text-inkdim w-[100px] flex-shrink-0"
+                value={linha.conta.categoria}
+                placeholder="Categoria"
+                list="categorias-sugeridas"
+                onChange={(e) => onEdit(linha.conta.id, "categoria", e.target.value)}
+              />
               <StatusBtn
                 status={linha.conta.status}
                 onClick={() => onToggleStatus(linha.conta.id)}
-              />
-              <Seg
-                valor={linha.conta.responsavel}
-                onChange={(r) => onChangeResp(linha.conta.id, r)}
               />
               <PinBtn
                 ativo={!!linha.conta.fixa}
@@ -235,17 +258,27 @@ export default function Ledger({ contas, onEdit, onToggleStatus, onChangeResp, o
                 onClick={() => onRemove(linha.conta.id)}
                 aria-label="Remover conta"
                 title="Remover"
-                className="text-inkdim hover:text-brick justify-self-center text-[16px] leading-none"
+                className="text-inkdim hover:text-brick text-[16px] leading-none ml-auto"
               >
                 &times;
               </button>
             </div>
 
-            <div className="flex items-center gap-4 mt-1 pl-0.5">
+            {/* Linha 3: responsável */}
+            <div className="mt-1.5">
+              <Seg
+                valor={linha.conta.responsavel}
+                onChange={(r) => onChangeResp(linha.conta.id, r)}
+                className="w-full max-w-[280px]"
+              />
+            </div>
+
+            {/* Linha 4: de / data / parcela */}
+            <div className="flex items-center gap-3 mt-1.5 flex-wrap">
               <div className="flex items-center gap-1.5">
                 <span className="text-[10px] text-inkdim">De</span>
                 <CampoInput
-                  className="text-[11px] text-inkdim w-[92px]"
+                  className="text-[11px] text-inkdim w-[88px]"
                   value={linha.conta.cartao || ""}
                   placeholder="Cartão"
                   onChange={(e) => onEdit(linha.conta.id, "cartao", e.target.value)}
@@ -254,7 +287,7 @@ export default function Ledger({ contas, onEdit, onToggleStatus, onChangeResp, o
               <div className="flex items-center gap-1.5">
                 <span className="text-[10px] text-inkdim">Data</span>
                 <CampoInput
-                  className="font-mono text-[11px] text-inkdim w-[76px]"
+                  className="font-mono text-[11px] text-inkdim w-[74px]"
                   value={linha.conta.data || ""}
                   placeholder="dd/mm/aaaa"
                   onChange={(e) => onEdit(linha.conta.id, "data", e.target.value)}
@@ -263,28 +296,31 @@ export default function Ledger({ contas, onEdit, onToggleStatus, onChangeResp, o
               <div className="flex items-center gap-1.5">
                 <span className="text-[10px] text-inkdim">Parcela</span>
                 <CampoInput
-                  className="font-mono text-[11px] text-inkdim w-[48px]"
+                  className="font-mono text-[11px] text-inkdim w-[44px]"
                   value={linha.conta.parcela || ""}
                   placeholder="-"
                   onChange={(e) => onEdit(linha.conta.id, "parcela", e.target.value)}
                 />
               </div>
-              {linha.conta.fixa && (
-                <span className="text-[10px] text-gold">📌 fixa</span>
-              )}
+              {linha.conta.fixa && <span className="text-[10px] text-gold">📌 fixa</span>}
             </div>
           </div>
         ) : (
           <GrupoRow
-            key={`g-${linha.nome}`}
+            key={`${linha.origem}-${linha.nome}`}
             nome={linha.nome}
             membros={linha.membros}
+            origem={linha.origem}
             expandido={
               expandidos.has(linha.nome) ||
               (query !== "" && !bate(linha.nome, query))
             }
             onToggleExpandir={() => toggleExpandido(linha.nome)}
-            onDesagrupar={() => desagrupar(linha.membros)}
+            onDesagrupar={() =>
+              linha.origem === "manual"
+                ? desagruparManual(linha.membros)
+                : desfazerAutoGrupo(linha.nome)
+            }
             onEdit={onEdit}
             onToggleStatus={onToggleStatus}
             onChangeResp={onChangeResp}
@@ -300,12 +336,12 @@ export default function Ledger({ contas, onEdit, onToggleStatus, onChangeResp, o
       </button>
 
       {selecionando && selecionados.size > 0 && (
-        <div className="sticky bottom-20 mt-3 flex items-center gap-2 bg-surface2 border border-gold/40 rounded-lg px-3 py-2.5">
+        <div className="sticky bottom-20 mt-3 flex items-center gap-2 bg-surface2 border border-gold/40 rounded-lg px-3 py-2.5 flex-wrap">
           <span className="text-[12px] text-inkdim whitespace-nowrap">
             {selecionados.size} selecionada{selecionados.size > 1 ? "s" : ""}
           </span>
           <CampoInput
-            className="text-[13px] text-ink flex-1 border-hair"
+            className="text-[13px] text-ink flex-1 border-hair min-w-[120px]"
             placeholder="Nome do grupo (ex: C6, Gasolina)"
             value={nomeGrupo}
             onChange={(e) => setNomeGrupo(e.target.value)}
@@ -348,6 +384,7 @@ export default function Ledger({ contas, onEdit, onToggleStatus, onChangeResp, o
 function GrupoRow({
   nome,
   membros,
+  origem,
   expandido,
   onToggleExpandir,
   onDesagrupar,
@@ -372,65 +409,78 @@ function GrupoRow({
   }
 
   return (
-    <div className="py-2.5 border-b border-hair last:border-none">
-      <div
-        className="grid items-center gap-x-2.5"
-        style={{ gridTemplateColumns: "1fr 88px 96px auto auto 22px" }}
-      >
-        <button onClick={onToggleExpandir} className="flex items-center gap-2 text-left min-w-0">
-          <span className="text-inkdim text-[11px]">{expandido ? "▾" : "▸"}</span>
+    <div className="py-3 border-b border-hair last:border-none">
+      <div className="flex items-center gap-2 flex-wrap">
+        <button
+          onClick={onToggleExpandir}
+          className="flex items-center gap-2 text-left min-w-0 flex-1"
+        >
+          <span className="text-inkdim text-[11px] flex-shrink-0">{expandido ? "▾" : "▸"}</span>
           <span className="text-[14px] text-ink font-medium truncate">{nome}</span>
-          <span className="text-[11px] text-inkdim">({membros.length})</span>
+          <span className="text-[11px] text-inkdim flex-shrink-0">({membros.length})</span>
+          {origem === "auto" && (
+            <span className="text-[9px] text-inkdim/60 border border-hair rounded px-1 flex-shrink-0">
+              cartão
+            </span>
+          )}
         </button>
-        <span />
-        <span className="font-mono text-[14px] text-ink text-right">{fmt(total)}</span>
-        <StatusBtn status={todosPagos ? "pago" : "pendente"} onClick={bulkStatus} />
-        <Seg valor={respUnico} onChange={bulkResp} />
+        <span className="font-mono text-[14px] text-ink">{fmt(total)}</span>
         <button
           onClick={onDesagrupar}
-          title="Desagrupar (desfaz o grupo inteiro)"
-          className="text-inkdim hover:text-brick justify-self-center text-[16px] leading-none"
+          title={
+            origem === "manual"
+              ? "Desagrupar (desfaz o grupo inteiro)"
+              : "Desfazer agrupamento automático deste cartão"
+          }
+          className="text-inkdim hover:text-brick text-[16px] leading-none"
         >
           &times;
         </button>
       </div>
 
+      <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+        <StatusBtn status={todosPagos ? "pago" : "pendente"} onClick={bulkStatus} />
+        <Seg valor={respUnico} onChange={bulkResp} className="flex-1 max-w-[280px]" />
+      </div>
+
       {expandido && (
-        <div className="mt-2 pl-5 border-l border-hair space-y-2">
+        <div className="mt-2 pl-3 border-l border-hair space-y-2.5">
           {membros.map((m) => (
-            <div
-              key={m.id}
-              className="grid items-center gap-x-2.5"
-              style={{ gridTemplateColumns: "1fr 88px 88px auto 22px" }}
-            >
-              <CampoInput
-                className="text-[13px] text-ink"
-                value={m.desc}
-                placeholder="Descrição"
-                onChange={(e) => onEdit(m.id, "desc", e.target.value)}
-              />
-              <CampoInput
-                className="text-[11px] text-inkdim"
-                value={m.categoria}
-                placeholder="Categoria"
-                list="categorias-sugeridas"
-                onChange={(e) => onEdit(m.id, "categoria", e.target.value)}
-              />
-              <CampoInput
-                className="font-mono text-[13px] text-ink text-right"
-                type="number"
-                step="0.01"
-                value={m.valor}
-                onChange={(e) => onEdit(m.id, "valor", Number(e.target.value))}
-              />
-              <StatusBtn status={m.status} onClick={() => onToggleStatus(m.id)} width="w-[68px]" />
-              <button
-                onClick={() => onEdit(m.id, "grupo", "")}
-                title="Tirar do grupo (esse item só)"
-                className="text-inkdim hover:text-brick justify-self-center text-[14px] leading-none"
-              >
-                &times;
-              </button>
+            <div key={m.id}>
+              <div className="flex items-center gap-2">
+                <CampoInput
+                  className="flex-1 text-[13px] text-ink min-w-0"
+                  value={m.desc}
+                  placeholder="Descrição"
+                  onChange={(e) => onEdit(m.id, "desc", e.target.value)}
+                />
+                <CampoInput
+                  className="font-mono text-[13px] text-ink text-right w-[76px] flex-shrink-0"
+                  type="number"
+                  step="0.01"
+                  value={m.valor}
+                  onChange={(e) => onEdit(m.id, "valor", Number(e.target.value))}
+                />
+              </div>
+              <div className="flex items-center gap-2 mt-1">
+                <CampoInput
+                  className="text-[11px] text-inkdim w-[100px] flex-shrink-0"
+                  value={m.categoria}
+                  placeholder="Categoria"
+                  list="categorias-sugeridas"
+                  onChange={(e) => onEdit(m.id, "categoria", e.target.value)}
+                />
+                <StatusBtn status={m.status} onClick={() => onToggleStatus(m.id)} />
+                {origem === "manual" && (
+                  <button
+                    onClick={() => onEdit(m.id, "grupo", "")}
+                    title="Tirar do grupo (esse item só)"
+                    className="text-inkdim hover:text-brick text-[14px] leading-none ml-auto"
+                  >
+                    &times;
+                  </button>
+                )}
+              </div>
             </div>
           ))}
         </div>
