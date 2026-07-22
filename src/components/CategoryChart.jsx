@@ -83,26 +83,22 @@ export default function CategoryChart({ contas, onEdit }) {
               {aberta && (
                 <div className="mb-3 pl-3 border-l border-hair space-y-2">
                   {itensAbertos.map((item) => (
-                    <div
-                      key={item.id}
-                      className="grid items-center gap-x-2.5"
-                      style={{ gridTemplateColumns: "1fr 110px 88px" }}
-                    >
+                    <div key={item.id} className="flex items-center gap-2 flex-wrap">
                       <CampoInput
-                        className="text-[13px] text-ink"
+                        className="flex-1 min-w-[100px] text-[13px] text-ink"
                         value={item.desc}
                         placeholder="Descrição"
                         onChange={(e) => onEdit(item.id, "desc", e.target.value)}
                       />
                       <CampoInput
-                        className="text-[12px] text-inkdim"
+                        className="text-[12px] text-inkdim w-[100px] flex-shrink-0"
                         value={item.categoria}
                         placeholder="Categoria"
                         list="categorias-sugeridas-chart"
                         onChange={(e) => onEdit(item.id, "categoria", e.target.value)}
                       />
                       <CampoInput
-                        className="font-mono text-[13px] text-ink text-right"
+                        className="font-mono text-[13px] text-ink text-right w-[76px] flex-shrink-0"
                         type="number"
                         step="0.01"
                         value={item.valor}
