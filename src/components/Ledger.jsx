@@ -1,4 +1,5 @@
 import { useState } from "react"
+import Avatar from "./Avatar.jsx"
 
 const RESP_OPTIONS = [
   { key: "eu", label: "Eu" },
@@ -25,7 +26,7 @@ function Seg({ valor, onChange, className = "" }) {
           key={opt.key}
           onClick={() => onChange(opt.key)}
           className={`flex-1 text-[10px] font-mono px-1.5 py-1 rounded text-center whitespace-nowrap ${
-            valor === opt.key ? "bg-gold text-[#2A2110]" : "text-inkdim"
+            valor === opt.key ? "bg-gold text-[#0A0A0A]" : "text-inkdim"
           }`}
         >
           {opt.label}
@@ -178,7 +179,7 @@ export default function Ledger({ contas, onEdit, onToggleStatus, onChangeResp, o
         })
 
   return (
-    <div className="bg-surface rounded-b-2xl px-4 sm:px-7 pt-3 pb-5 relative">
+    <div className="bg-surface rounded-2xl px-4 sm:px-7 pt-3 pb-5 relative">
       <datalist id="categorias-sugeridas">
         {CATEGORIAS_SUGERIDAS.map((c) => (
           <option key={c} value={c} />
@@ -222,6 +223,7 @@ export default function Ledger({ contas, onEdit, onToggleStatus, onChangeResp, o
                   onChange={() => toggleSelecionado(linha.conta.id)}
                 />
               )}
+              <Avatar nome={linha.conta.cartao || linha.conta.categoria} />
               <CampoInput
                 className="flex-1 text-[14px] text-ink min-w-0"
                 value={linha.conta.desc}
@@ -349,7 +351,7 @@ export default function Ledger({ contas, onEdit, onToggleStatus, onChangeResp, o
           <button
             onClick={confirmarAgrupar}
             disabled={!nomeGrupo.trim() || selecionados.size < 2}
-            className="text-[12px] font-medium px-3 py-1.5 rounded-md bg-gold text-[#2A2110] disabled:opacity-40"
+            className="text-[12px] font-medium px-3 py-1.5 rounded-md bg-gold text-[#0A0A0A] disabled:opacity-40"
           >
             Agrupar
           </button>
@@ -362,7 +364,7 @@ export default function Ledger({ contas, onEdit, onToggleStatus, onChangeResp, o
           onClick={toggleBusca}
           title="Buscar"
           className={`w-11 h-11 rounded-full shadow-lg flex items-center justify-center text-[16px] ${
-            buscando ? "bg-gold text-[#2A2110]" : "bg-surface2 text-ink border border-hair"
+            buscando ? "bg-gold text-[#0A0A0A]" : "bg-surface2 text-ink border border-hair"
           }`}
         >
           🔍
@@ -371,7 +373,7 @@ export default function Ledger({ contas, onEdit, onToggleStatus, onChangeResp, o
           onClick={() => (selecionando ? cancelarSelecao() : setSelecionando(true))}
           title="Selecionar pra agrupar"
           className={`w-11 h-11 rounded-full shadow-lg flex items-center justify-center text-[16px] ${
-            selecionando ? "bg-gold text-[#2A2110]" : "bg-surface2 text-ink border border-hair"
+            selecionando ? "bg-gold text-[#0A0A0A]" : "bg-surface2 text-ink border border-hair"
           }`}
         >
           ⛓
@@ -392,10 +394,9 @@ function GrupoRow({
   onToggleStatus,
   onChangeResp,
 }) {
+  const [dividindoTudo, setDividindoTudo] = useState(false)
   const total = membros.reduce((s, m) => s + (Number(m.valor) || 0), 0)
   const todosPagos = membros.every((m) => m.status === "pago")
-  const respostas = new Set(membros.map((m) => m.responsavel))
-  const respUnico = respostas.size === 1 ? [...respostas][0] : null
 
   const bulkStatus = () => {
     const novoStatus = todosPagos ? "pendente" : "pago"
@@ -406,6 +407,7 @@ function GrupoRow({
 
   const bulkResp = (r) => {
     membros.forEach((m) => onChangeResp(m.id, r))
+    setDividindoTudo(false)
   }
 
   return (
@@ -416,6 +418,7 @@ function GrupoRow({
           className="flex items-center gap-2 text-left min-w-0 flex-1"
         >
           <span className="text-inkdim text-[11px] flex-shrink-0">{expandido ? "▾" : "▸"}</span>
+          <Avatar nome={nome} size={24} />
           <span className="text-[14px] text-ink font-medium truncate">{nome}</span>
           <span className="text-[11px] text-inkdim flex-shrink-0">({membros.length})</span>
           {origem === "auto" && (
@@ -440,7 +443,16 @@ function GrupoRow({
 
       <div className="flex items-center gap-2 mt-1.5 flex-wrap">
         <StatusBtn status={todosPagos ? "pago" : "pendente"} onClick={bulkStatus} />
-        <Seg valor={respUnico} onChange={bulkResp} className="flex-1 max-w-[280px]" />
+        {dividindoTudo ? (
+          <Seg valor={null} onChange={bulkResp} className="flex-1 max-w-[280px]" />
+        ) : (
+          <button
+            onClick={() => setDividindoTudo(true)}
+            className="text-[11px] text-inkdim hover:text-gold border border-hair rounded-md px-2.5 py-1"
+          >
+            Dividir cartão inteiro
+          </button>
+        )}
       </div>
 
       {expandido && (
@@ -462,7 +474,7 @@ function GrupoRow({
                   onChange={(e) => onEdit(m.id, "valor", Number(e.target.value))}
                 />
               </div>
-              <div className="flex items-center gap-2 mt-1">
+              <div className="flex items-center gap-2 mt-1 flex-wrap">
                 <CampoInput
                   className="text-[11px] text-inkdim w-[100px] flex-shrink-0"
                   value={m.categoria}
@@ -480,6 +492,13 @@ function GrupoRow({
                     &times;
                   </button>
                 )}
+              </div>
+              <div className="mt-1">
+                <Seg
+                  valor={m.responsavel}
+                  onChange={(r) => onChangeResp(m.id, r)}
+                  className="w-full max-w-[260px]"
+                />
               </div>
             </div>
           ))}
