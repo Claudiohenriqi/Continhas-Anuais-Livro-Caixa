@@ -228,7 +228,7 @@ export default function App() {
           title={sujo ? "Salva sozinho em instantes — clique pra forçar agora" : ""}
           className={`text-[13px] font-medium px-4 py-2 rounded-lg border ${
             sujo
-              ? "bg-gold text-[#2A2110] border-gold"
+              ? "bg-gold text-[#0A0A0A] border-gold"
               : "text-inkdim border-hair cursor-default"
           }`}
         >
