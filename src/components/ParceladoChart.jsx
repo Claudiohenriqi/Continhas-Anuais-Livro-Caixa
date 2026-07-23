@@ -19,7 +19,6 @@ function ehParcelada(parcela) {
 export default function ParceladoChart({ contas: contasComRecebimentos }) {
   const contas = contasComRecebimentos.filter((c) => c.categoria !== "Recebimento")
   const doCartao = contas.filter((c) => ehCartaoDeVerdade(c.cartao) && !ehFixo(c.categoria))
-  const doCartao = contas.filter((c) => ehCartaoDeVerdade(c.cartao) && !ehFixo(c.categoria))
   const total = doCartao.reduce((s, c) => s + (Number(c.valor) || 0), 0)
 
   if (total === 0) return null
