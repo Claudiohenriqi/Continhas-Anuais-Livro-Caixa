@@ -12,6 +12,26 @@ import { chaveParaMesAno, proximoMes, tituloAba, avancarData, avancarParcela } f
 
 let nextId = 1000
 
+const ehParcelaAtiva = (p) => /^\d+\s*\/\s*\d+$/.test((p || "").trim())
+
+// Identifica a "mesma" compra parcelada entre meses diferentes, sem
+// depender da descrição (que pode ter sido renomeada).
+// Fallback só pra linhas antigas que ainda não têm idParcela (ID é sempre
+// preferido quando existe — é a forma confiável de identificar a mesma
+// compra parcelada entre meses, mesmo que cartão/valor/data coincidam
+// com outra compra diferente).
+function assinaturaParcela(c) {
+  if (c.idParcela) return `id:${c.idParcela}`
+  const totalParcelas = (c.parcela || "").split("/")[1]?.trim() || ""
+  return `fp:${(c.cartao || "").trim().toLowerCase()}|${(c.data || "").trim()}|${(
+    Number(c.valor) || 0
+  ).toFixed(2)}|${totalParcelas}`
+}
+
+function gerarIdParcela() {
+  return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`
+}
+
 export default function App() {
   const [meses, setMeses] = useState([])
   const [mesAtual, setMesAtual] = useState(null)
@@ -74,7 +94,16 @@ export default function App() {
   }, [mesAtual, meses])
 
   const editarCampo = (id, campo, valor) => {
-    setContas((prev) => prev.map((c) => (c.id === id ? { ...c, [campo]: valor } : c)))
+    setContas((prev) =>
+      prev.map((c) => {
+        if (c.id !== id) return c
+        const atualizado = { ...c, [campo]: valor }
+        if (campo === "parcela" && ehParcelaAtiva(valor) && !c.idParcela) {
+          atualizado.idParcela = gerarIdParcela()
+        }
+        return atualizado
+      })
+    )
     setSujo(true)
   }
 
@@ -113,6 +142,7 @@ export default function App() {
         responsavel: "eu",
         grupo: "",
         fixa: false,
+        idParcela: "",
       },
     ])
     setSujo(true)
@@ -145,8 +175,7 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contas, sujo])
 
-  const levarFixasProximoMes = () => {
-    const ehParcelaAtiva = (p) => /^\d+\s*\/\s*\d+$/.test((p || "").trim())
+  const levarFixasProximoMes = async () => {
     const candidatos = contas.filter((c) => c.fixa || ehParcelaAtiva(c.parcela))
 
     if (candidatos.length === 0) {
@@ -156,13 +185,39 @@ export default function App() {
       return
     }
 
+    // garante que toda parcelada tenha um ID fixo antes de comparar/levar
+    const semId = candidatos.filter((c) => ehParcelaAtiva(c.parcela) && !c.idParcela)
+    if (semId.length > 0) {
+      setContas((prev) =>
+        prev.map((c) =>
+          semId.some((s) => s.id === c.id) ? { ...c, idParcela: gerarIdParcela() } : c
+        )
+      )
+    }
+    const idsGerados = Object.fromEntries(semId.map((c) => [c.id, gerarIdParcela()]))
+    const comId = (c) => (idsGerados[c.id] ? { ...c, idParcela: idsGerados[c.id] } : c)
+
+    const destino = tituloAba(proximoMes(chaveParaMesAno(mesAtual)))
+    setLevandoFixas(true)
+    setMsgFixas(null)
+
+    // busca o que já existe no mês seguinte, pra não duplicar
+    let existentes = []
+    try {
+      existentes = await fetchContasDaAba(destino)
+    } catch (e) {
+      existentes = [] // aba ainda não existe — nada a comparar
+    }
+    const assinaturasExistentes = new Set(existentes.map(assinaturaParcela))
+
     const linhas = candidatos
+      .map(comId)
       .map((c) => {
         const parcelaInfo = avancarParcela(c.parcela)
         if (parcelaInfo.esgotada) return null
-        return {
+        const nova = {
           cartao: c.cartao,
-          data: avancarData(c.data),
+          data: c.data, // mantém a data original da compra (não avança)
           desc: c.desc,
           categoria: c.categoria,
           valor: c.valor,
@@ -171,18 +226,21 @@ export default function App() {
           responsavel: c.responsavel,
           grupo: "",
           fixa: c.fixa,
+          idParcela: c.idParcela || "",
         }
+        if (assinaturasExistentes.has(assinaturaParcela(nova))) return null // já existe lá
+        return nova
       })
       .filter(Boolean)
 
     if (linhas.length === 0) {
-      setMsgFixas("As parcelas fixas já chegaram no fim — nenhuma pra levar adiante.")
+      setMsgFixas(
+        "Tudo que era pra levar já estava lá (ou as parcelas acabaram) — nada duplicado."
+      )
+      setLevandoFixas(false)
       return
     }
 
-    const destino = tituloAba(proximoMes(chaveParaMesAno(mesAtual)))
-    setLevandoFixas(true)
-    setMsgFixas(null)
     levarContasFixas(destino, linhas)
       .then(() => {
         setMsgFixas(`${linhas.length} conta(s) levada(s) pra "${destino}".`)
@@ -193,6 +251,53 @@ export default function App() {
       .finally(() => {
         setLevandoFixas(false)
       })
+  }
+
+  const renomearParcelasFuturas = async (conta) => {
+    if (!ehParcelaAtiva(conta.parcela)) {
+      setMsgFixas("Isso só funciona em contas parceladas (com formato tipo 3/12).")
+      return
+    }
+    let contaComId = conta
+    if (!conta.idParcela) {
+      const novoId = gerarIdParcela()
+      contaComId = { ...conta, idParcela: novoId }
+      setContas((prev) => prev.map((c) => (c.id === conta.id ? { ...c, idParcela: novoId } : c)))
+    }
+    const alvo = assinaturaParcela(contaComId)
+    const mesesFuturos = meses.filter((m) => m.chave > mesAtual)
+
+    if (mesesFuturos.length === 0) {
+      setMsgFixas("Ainda não existe nenhum mês futuro criado pra atualizar.")
+      return
+    }
+
+    setMsgFixas("Procurando essa parcela nos próximos meses…")
+    let atualizados = 0
+    for (const m of mesesFuturos) {
+      try {
+        const dados = await fetchContasDaAba(m.aba)
+        let mudou = false
+        const novosDados = dados.map((c) => {
+          if (assinaturaParcela(c) === alvo && c.desc !== conta.desc) {
+            mudou = true
+            atualizados++
+            return { ...c, desc: conta.desc }
+          }
+          return c
+        })
+        if (mudou) {
+          await salvarNaAba(m.aba, novosDados)
+        }
+      } catch (e) {
+        // aba não existe ainda, ignora
+      }
+    }
+    setMsgFixas(
+      atualizados > 0
+        ? `Nome atualizado em ${atualizados} mês(es) futuro(s).`
+        : "Não achei essa parcela em nenhum mês futuro ainda salvo."
+    )
   }
 
   const adicionarRecebimento = (valor, nota) => {
@@ -211,6 +316,7 @@ export default function App() {
         responsavel: "francesco",
         grupo: "",
         fixa: false,
+        idParcela: "",
       },
     ])
     setSujo(true)
@@ -302,6 +408,7 @@ export default function App() {
             onChangeResp={alterarResponsavel}
             onRemove={removerConta}
             onAdd={adicionarConta}
+            onRenomearFuturas={renomearParcelasFuturas}
           />
           <SummaryCard
             contas={contas}
