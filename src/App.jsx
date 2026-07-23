@@ -195,9 +195,31 @@ export default function App() {
       })
   }
 
+  const adicionarRecebimento = (valor, nota) => {
+    setContas((prev) => [
+      ...prev,
+      {
+        id: nextId++,
+        desc: nota?.trim() || "Pagamento recebido",
+        categoria: "Recebimento",
+        valor: Number(valor) || 0,
+        cartao: "",
+        data: "",
+        parcela: "",
+        vencimento: "",
+        status: "pago",
+        responsavel: "francesco",
+        grupo: "",
+        fixa: false,
+      },
+    ])
+    setSujo(true)
+  }
+
   const { pago, pendente, repassar } = useMemo(() => {
     return contas.reduce(
       (acc, c) => {
+        if (c.categoria === "Recebimento") return acc // pagamento já recebido, não é conta
         const v = Number(c.valor) || 0
         if (c.status === "pago") acc.pago += v
         else acc.pendente += v
@@ -281,7 +303,13 @@ export default function App() {
             onRemove={removerConta}
             onAdd={adicionarConta}
           />
-          <SummaryCard contas={contas} repassar={repassar} mes={mesRotulo} />
+          <SummaryCard
+            contas={contas}
+            repassar={repassar}
+            mes={mesRotulo}
+            onAddRecebimento={adicionarRecebimento}
+            onRemove={removerConta}
+          />
           <CategoryChart contas={contas} onEdit={editarCampo} />
           <ParceladoChart contas={contas} />
           <AnnualView />
