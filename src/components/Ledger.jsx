@@ -73,7 +73,8 @@ const CATEGORIAS_SUGERIDAS = [
   "Viagem", "Investimentos", "Parcelamento", "Outros",
 ]
 
-export default function Ledger({ contas, onEdit, onToggleStatus, onChangeResp, onRemove, onAdd }) {
+export default function Ledger({ contas: contasComRecebimentos, onEdit, onToggleStatus, onChangeResp, onRemove, onAdd }) {
+  const contas = contasComRecebimentos.filter((c) => c.categoria !== "Recebimento")
   const [selecionando, setSelecionando] = useState(false)
   const [selecionados, setSelecionados] = useState(new Set())
   const [nomeGrupo, setNomeGrupo] = useState("")
