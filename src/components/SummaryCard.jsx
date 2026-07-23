@@ -1,7 +1,9 @@
+import { useState } from "react"
+
 const fmt = (v) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
 
 // Desenha um "recibo" com a mesma cara do site e devolve um Blob PNG.
-async function gerarImagemResumo(contas, mes, repassar) {
+async function gerarImagemResumo(contas, mes, repassar, recebido, restante) {
   const doFrancesco = contas.filter((c) => c.responsavel === "francesco")
   const divididas = contas.filter((c) => c.responsavel === "dividido")
   const linhas = [
@@ -25,7 +27,7 @@ async function gerarImagemResumo(contas, mes, repassar) {
   const lineH = 30
   const headerH = 130
   const groupLabelH = 28
-  const footerH = 130
+  const footerH = recebido > 0 ? 190 : 130
   const groupsCount = (doFrancesco.length > 0 ? 1 : 0) + (divididas.length > 0 ? 1 : 0)
   const height =
     headerH + groupsCount * groupLabelH + linhas.length * lineH + footerH + 30
@@ -95,20 +97,42 @@ async function gerarImagemResumo(contas, mes, repassar) {
   ctx.stroke()
   ctx.setLineDash([])
 
-  y += 42
+  y += 38
   ctx.fillStyle = "#8F8F8F"
   ctx.font = "13px Inter, Arial, sans-serif"
-  ctx.fillText("VALOR A REPASSAR", padX, y)
+  ctx.fillText("TOTAL A REPASSAR", padX, y)
+  ctx.textAlign = "right"
+  ctx.fillStyle = "#FFFFFF"
+  ctx.font = "600 15px Inter, sans-serif"
+  ctx.fillText(fmt(repassar), width - padX, y)
+  ctx.textAlign = "left"
+
+  if (recebido > 0) {
+    y += 26
+    ctx.fillStyle = "#8F8F8F"
+    ctx.font = "13px Inter, Arial, sans-serif"
+    ctx.fillText("JÁ RECEBIDO", padX, y)
+    ctx.textAlign = "right"
+    ctx.fillStyle = "#22C55E"
+    ctx.font = "600 15px Inter, sans-serif"
+    ctx.fillText(`- ${fmt(recebido)}`, width - padX, y)
+    ctx.textAlign = "left"
+  }
 
   y += 40
-  ctx.fillStyle = "#22C55E"
+  ctx.fillStyle = "#8F8F8F"
+  ctx.font = "13px Inter, Arial, sans-serif"
+  ctx.fillText("FALTA", padX, y)
+
+  y += 40
+  ctx.fillStyle = "#D7FF4E"
   ctx.font = "800 34px Inter, sans-serif"
-  ctx.fillText(fmt(repassar), padX, y)
+  ctx.fillText(fmt(restante), padX, y)
 
   return new Promise((resolve) => canvas.toBlob(resolve, "image/png"))
 }
 
-function montarTexto(contas, mes, repassar) {
+function montarTexto(contas, mes, repassar, recebido, restante) {
   const doFrancesco = contas.filter((c) => c.responsavel === "francesco")
   const divididas = contas.filter((c) => c.responsavel === "dividido")
 
@@ -128,27 +152,38 @@ function montarTexto(contas, mes, repassar) {
     })
   }
 
-  texto += `\n*Total a repassar: ${fmt(repassar)}*`
+  texto += `\nTotal a repassar: ${fmt(repassar)}`
+  if (recebido > 0) {
+    texto += `\nJá recebido: -${fmt(recebido)}`
+  }
+  texto += `\n*Falta: ${fmt(restante)}*`
   return texto
 }
 
-export default function SummaryCard({ contas, repassar, mes }) {
+export default function SummaryCard({ contas, repassar, mes, onAddRecebimento, onRemove }) {
+  const [valorNovo, setValorNovo] = useState("")
+  const [notaNova, setNotaNova] = useState("")
+
   const doFrancesco = contas.filter((c) => c.responsavel === "francesco")
   const divididas = contas.filter((c) => c.responsavel === "dividido")
+  const recebimentos = contas.filter((c) => c.categoria === "Recebimento")
   const semNada = doFrancesco.length === 0 && divididas.length === 0
 
+  const totalRecebido = recebimentos.reduce((s, c) => s + (Number(c.valor) || 0), 0)
+  const restante = repassar - totalRecebido
+
   const copiar = () => {
-    navigator.clipboard.writeText(montarTexto(contas, mes, repassar))
+    navigator.clipboard.writeText(montarTexto(contas, mes, repassar, totalRecebido, restante))
     alert("Resumo copiado!")
   }
 
   const whatsapp = () => {
-    const texto = encodeURIComponent(montarTexto(contas, mes, repassar))
+    const texto = encodeURIComponent(montarTexto(contas, mes, repassar, totalRecebido, restante))
     window.open(`https://wa.me/?text=${texto}`, "_blank")
   }
 
   const compartilharImagem = async () => {
-    const blob = await gerarImagemResumo(contas, mes, repassar)
+    const blob = await gerarImagemResumo(contas, mes, repassar, totalRecebido, restante)
     const arquivo = new File([blob], `resumo-${mes.replace(" ", "-")}.png`, { type: "image/png" })
 
     if (navigator.canShare && navigator.canShare({ files: [arquivo] })) {
@@ -160,7 +195,6 @@ export default function SummaryCard({ contas, repassar, mes }) {
       }
     }
 
-    // Sem suporte a compartilhamento nativo (ex: desktop) — baixa a imagem
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
     a.href = url
@@ -169,9 +203,17 @@ export default function SummaryCard({ contas, repassar, mes }) {
     URL.revokeObjectURL(url)
   }
 
+  const registrar = () => {
+    const v = Number(valorNovo)
+    if (!v || v <= 0) return
+    onAddRecebimento(v, notaNova)
+    setValorNovo("")
+    setNotaNova("")
+  }
+
   return (
-    <div className="mt-7 bg-surface border border-dashed border-hair rounded-2xl px-6 py-6">
-      <h2 className="font-display font-medium text-[17px] mb-3">Resumo pro Francesco</h2>
+    <div className="mt-2.5 bg-surface rounded-2xl px-6 py-6">
+      <h2 className="font-display font-semibold text-[16px] mb-3">Resumo pro Francesco</h2>
 
       {semNada ? (
         <p className="text-[13px] text-inkdim">
@@ -207,9 +249,66 @@ export default function SummaryCard({ contas, repassar, mes }) {
         </div>
       )}
 
+      <div className="flex justify-between items-center mt-4 pt-3.5 border-t border-hair">
+        <span className="text-[13px] text-inkdim">Total a repassar</span>
+        <span className="font-mono text-[15px] text-ink font-semibold">{fmt(repassar)}</span>
+      </div>
+
+      {/* Pagamentos já recebidos */}
+      <div className="mt-3">
+        <div className="text-[11px] text-inkdim uppercase tracking-wide mb-1.5">
+          Pagamentos já recebidos
+        </div>
+
+        {recebimentos.length > 0 && (
+          <div className="space-y-1 mb-2">
+            {recebimentos.map((r) => (
+              <div key={r.id} className="flex items-center justify-between text-[13px]">
+                <span className="text-ink truncate">{r.desc}</span>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <span className="font-mono text-jade">- {fmt(r.valor)}</span>
+                  <button
+                    onClick={() => onRemove(r.id)}
+                    title="Remover"
+                    className="text-inkdim hover:text-brick text-[13px] leading-none"
+                  >
+                    &times;
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="flex items-center gap-2">
+          <input
+            type="number"
+            step="0.01"
+            placeholder="Valor recebido"
+            value={valorNovo}
+            onChange={(e) => setValorNovo(e.target.value)}
+            className="flex-1 min-w-0 bg-surface2 rounded-lg px-3 py-2 text-[13px] text-ink font-mono focus:outline-none"
+          />
+          <input
+            type="text"
+            placeholder="Nota (opcional)"
+            value={notaNova}
+            onChange={(e) => setNotaNova(e.target.value)}
+            className="flex-1 min-w-0 bg-surface2 rounded-lg px-3 py-2 text-[13px] text-ink focus:outline-none"
+          />
+          <button
+            onClick={registrar}
+            disabled={!valorNovo || Number(valorNovo) <= 0}
+            className="text-[12px] font-medium px-3 py-2 rounded-lg bg-gold text-[#0A0A0A] disabled:opacity-40 flex-shrink-0"
+          >
+            Registrar
+          </button>
+        </div>
+      </div>
+
       <div className="flex justify-between items-baseline mt-4 pt-3.5 border-t border-hair">
-        <span className="text-[14px] text-ink">Valor a repassar</span>
-        <strong className="font-mono text-[26px] text-jade font-semibold">{fmt(repassar)}</strong>
+        <span className="text-[14px] text-ink">Falta</span>
+        <strong className="font-mono text-[26px] text-gold font-semibold">{fmt(restante)}</strong>
       </div>
 
       <div className="flex gap-2.5 mt-4 flex-wrap">
