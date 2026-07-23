@@ -19,7 +19,6 @@ function CampoInput({ className, ...props }) {
 
 export default function CategoryChart({ contas: contasComRecebimentos, onEdit }) {
   const contas = contasComRecebimentos.filter((c) => c.categoria !== "Recebimento")
-  const [expandida, setExpandida] = useState(null)
   const [expandida, setExpandida] = useState(null) // nome da categoria aberta
   const [idsAbertos, setIdsAbertos] = useState([]) // ids fixos, tirados no momento do clique
 
