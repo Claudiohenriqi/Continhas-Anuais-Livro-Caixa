@@ -164,7 +164,7 @@ export async function levarContasFixas(abaDestino, contas) {
 
 export async function fetchContasDaAba(nomeAba) {
   const { apiKey, sheetId } = credenciais()
-  const range = `${nomeAba}!A2:L1000`
+  const range = `${nomeAba}!A2:M1000`
   const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(
     range
   )}?key=${apiKey}&valueRenderOption=UNFORMATTED_VALUE`
@@ -195,5 +195,6 @@ export async function fetchContasDaAba(nomeAba) {
       responsavel: normalizeResp(row[8]),
       grupo: paraTexto(row[10]),
       fixa: normalizeFixa(row[11]),
+      idParcela: paraTexto(row[12]),
     }))
 }
