@@ -504,6 +504,31 @@ function GrupoRow({
                     className="w-full max-w-[260px]"
                   />
                 </div>
+                <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] text-inkdim">Data</span>
+                    <CampoInput
+                      className="font-mono text-[11px] text-inkdim w-[74px]"
+                      value={m.data || ""}
+                      placeholder="dd/mm/aaaa"
+                      onChange={(e) => onEdit(m.id, "data", e.target.value)}
+                    />
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] text-inkdim">Parcela</span>
+                    <CampoInput
+                      className="font-mono text-[11px] text-inkdim w-[44px]"
+                      value={m.parcela || ""}
+                      placeholder="-"
+                      onChange={(e) => onEdit(m.id, "parcela", e.target.value)}
+                    />
+                  </div>
+                  <PinBtn
+                    ativo={!!m.fixa}
+                    onClick={() => onEdit(m.id, "fixa", !m.fixa)}
+                  />
+                  {m.fixa && <span className="text-[10px] text-gold">📌 fixa</span>}
+                </div>
               </div>
             ))}
           </div>
