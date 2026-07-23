@@ -1,6 +1,6 @@
 const fmt = (v) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
 
-const NAO_CARTAO = ["débito", "debito", "pix", "transferência", "transferencia", "dinheiro"]
+const NAO_CARTAO = ["débito", "debito", "pix", "transferência", "transferencia", "dinheiro", "boleto"]
 
 function ehCartaoDeVerdade(nome) {
   const n = (nome || "").trim().toLowerCase()
@@ -8,12 +8,16 @@ function ehCartaoDeVerdade(nome) {
   return !NAO_CARTAO.some((x) => n.includes(x))
 }
 
+function ehFixo(categoria) {
+  return (categoria || "").trim().toLowerCase() === "fixo"
+}
+
 function ehParcelada(parcela) {
   return /^\d+\s*\/\s*\d+$/.test((parcela || "").trim())
 }
 
 export default function ParceladoChart({ contas }) {
-  const doCartao = contas.filter((c) => ehCartaoDeVerdade(c.cartao))
+  const doCartao = contas.filter((c) => ehCartaoDeVerdade(c.cartao) && !ehFixo(c.categoria))
   const total = doCartao.reduce((s, c) => s + (Number(c.valor) || 0), 0)
 
   if (total === 0) return null
