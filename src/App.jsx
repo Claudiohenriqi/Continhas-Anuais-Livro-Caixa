@@ -186,16 +186,27 @@ export default function App() {
     }
 
     // garante que toda parcelada tenha um ID fixo antes de comparar/levar
+    // (gera cada ID só UMA vez, e usa o mesmo valor tanto pra atualizar o
+    // mês atual quanto pra mandar pro mês seguinte — antes eram gerados
+    // dois IDs diferentes pra mesma conta, causando duplicata a cada clique)
     const semId = candidatos.filter((c) => ehParcelaAtiva(c.parcela) && !c.idParcela)
-    if (semId.length > 0) {
-      setContas((prev) =>
-        prev.map((c) =>
-          semId.some((s) => s.id === c.id) ? { ...c, idParcela: gerarIdParcela() } : c
-        )
-      )
-    }
     const idsGerados = Object.fromEntries(semId.map((c) => [c.id, gerarIdParcela()]))
     const comId = (c) => (idsGerados[c.id] ? { ...c, idParcela: idsGerados[c.id] } : c)
+
+    if (semId.length > 0) {
+      const contasAtualizadas = contas.map(comId)
+      setContas(contasAtualizadas)
+      // salva o ID novo na hora, sem esperar os 2s do auto-save — evita
+      // que um segundo clique rápido gere um ID diferente por engano
+      const mesAtualInfo = meses.find((m) => m.chave === mesAtual)
+      if (mesAtualInfo) {
+        try {
+          await salvarNaAba(mesAtualInfo.aba, contasAtualizadas)
+        } catch (e) {
+          // se falhar aqui, o auto-save normal tenta de novo em seguida
+        }
+      }
+    }
 
     const destino = tituloAba(proximoMes(chaveParaMesAno(mesAtual)))
     setLevandoFixas(true)
