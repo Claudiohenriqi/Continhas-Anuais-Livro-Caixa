@@ -4,6 +4,7 @@ import HeroSummary from "./components/HeroSummary.jsx"
 import Ledger from "./components/Ledger.jsx"
 import SummaryCard from "./components/SummaryCard.jsx"
 import CategoryChart from "./components/CategoryChart.jsx"
+import ParceladoChart from "./components/ParceladoChart.jsx"
 import AnnualView from "./components/AnnualView.jsx"
 import { contas as contasMock } from "./data/mockData.js"
 import { listarMesesDisponiveis, fetchContasDaAba, salvarNaAba, levarContasFixas } from "./data/sheetsApi.js"
@@ -282,6 +283,7 @@ export default function App() {
           />
           <SummaryCard contas={contas} repassar={repassar} mes={mesRotulo} />
           <CategoryChart contas={contas} onEdit={editarCampo} />
+          <ParceladoChart contas={contas} />
           <AnnualView />
         </>
       )}
